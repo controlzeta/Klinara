@@ -1,6 +1,6 @@
 # Klinara — Product Requirements Document
 
-## Phase 1: Fundation & MVP Scope (Nov 2026)
+## Phase 1: Fundamentos y alcance del MVP (Nov 2026)
 
 ### 1. Objective & Modelo de Servicio
 
@@ -20,23 +20,14 @@
    - Agendar citas (personal y paciente con verificación de correo).
    - Cancelación tardía: <24h → marca de impuntualidad; 3 marcas bloquean reserva en portal; personal puede desbloquear.
    - No-show: marca independiente, no cuenta para impuntualidad.
-   - Reserva paciente: ver correo con código 6 dígitos; token de un solo uso; expiración definida.
-   - Horizon de reserva: paciente ve hasta 45 días; personal ve todo calendario.
+   - Reserva del paciente con correo obligatorio y código de verificación de 6 dígitos.
+   - Enlace/token de un solo uso para acceso del paciente; vencimiento, alcance y vínculo a paciente/usuario pendientes de definir.
+   - Anticipación: mínimo 24 horas y máximo 45 días para el paciente; el personal ve todo el calendario y puede reservar fuera de ese rango.
 4. **Gestión de pagos manuales:** 
    - Registrar pago: monto, fecha, método (efectivo, tarjetas, SPEI), concepto.
    - Saldo pendiente: captura manual; mostrar saldo real = total adeudado - abonos registrados.
    - Reportes por paciente y consultorio.
-5. **Aviso de privacidad (borrador):** Generado por Klinara por consultorio usando perfil; admin debe revisar y completar antes de publicar. Include identidad, domicilio, finalidades básicas y medio ARCO.
-
-**POST-MVP (Fase 2 en adelante):**
-
-- Campañas promocionales por email/WhatsApp con consentimiento.
-- Cuestionarios para pacientes.
-- Recibos automáticos por pago.
-- Paciente consulte saldo y abonos.
-- Datos clínicos/expte médico.
-- Integración con proveedores de WhatsApp/SMS definidos.
-- Catálogo de servicios y tarifas configurables.
+5. **Notificaciones de cita:** confirmación/alertas por WhatsApp obligatorias y por email cuando esté disponible; selección e integración del proveedor forman parte del MVP y son un prerrequisito de implementación.
 
 ### 3. Roles y Permisos (Finalizados)
 
@@ -83,13 +74,37 @@
 - **No funcionales:** Build 0 errores/0 warnings; zona horaria operative; diseño mobile-first comprobado en browser.
 - **Cobertura Playwright:** Mínimo 75% en flujos: login, alta paciente, reserva cita, registro abono, confirmación cita.
 
-### 8. Pendientes para Fase 2
+### 8. Pendientes para completar el desarrollo
 
-- Catálogo de servicios y tarifas por consultorio.
-- Proveedor de WhatsApp/SMS definido y testeado.
-- Integración de datos clínicos (post-MVP).
-- Aviso de privacidad final (jurídicamente revisado).
-- Métricas de éxito del MVP (consultorios activos, reservas completadas, reducción no-show).
+- Definir detalle de calendario por consultorio: horarios, festivos, vacaciones, intervalos de comida.
+- Configurar proveedor de WhatsApp/SMS (investigar, probar, seleccionar) y credenciales.
+- Implementar token de paciente: tabla unificada, tipos, vencimiento, revocación; vinculación al usuario sin cuenta propia.
+- Definir y mapear saldo real vs saldo registrado; cálculo: total adeudado - abonos (ver definición en módulo pagos).
+- Generar aviso de privacidad final con firma jurídica; completar responsables, proveedores, conservación y procedimiento ARCO.
+- Mapear y validar roles: permisos concretos por rol y confirmar que el admin de clínica no ve datos ajenos.
+- Añadir logs Serilog con correlation ID en flujos críticos.
+- Definir y priorizar 8 fases de desarrollo (ver sección "Fases de desarrollo" al final).
+- Criterios de aceptación finales para liberar v1.0.
+
+--- ### Fases de desarrollo (roadmap)
+
+**Fase 0 - Definición y decisión:** Ya definido en este PRD. Confirmar versión .NET, decisiones de arquitectura y MVP vs post-MVP.
+
+**Fase 1 - Infraestructura y auth:** Configurar proyecto .NET 10, Solución, Blazor, Serilog, autenticación con OTP y sesión, roles y permisos en base de datos, URLs por consultorio, migraciones iniciales.
+
+**Fase 2 - Agenda y citas:** Implementar modelo de cita, disponibilidad por doctor/consultorio, reglas de traslapes, horarios por día con intervalos de comida, configurar festivos y vacaciones, cancelación <24h y marcas, no-show, horizon de reserva (45d paciente, todo calendario staff).
+
+**Fase 3 - Paciente y reservas:** Portal público, reserva con verificación de correo (código 6 dígitos), token de un solo uso, login del paciente, límites de reserva y bloqueo por 3 impuntualidades.
+
+**Fase 4 - Pagos y reportes:** Modelo de pago manual, captura de saldo, métodos configurables (efectivo, tarjetas, SPEI), generación de reportes por paciente/consultorio, visualización de saldo real y abonos.
+
+**Fase 5 - Privacidad y cumplimiento:** Aviso de privacidad final (jurídico), procedimiento ARCO implementado, datos sensibles revisados, datos clínicos fuera del MVP.
+
+**Fase 6 - Notificaciones:** Proveedor WhatsApp/SMS investigado e integrado, plantillas de confirmación/alertas, envío por ambos canales según disponibilidad.
+
+**Fase 7 - UI y UX:** Componentes Blazor, diseño mobile-first, mockup conectado a datos reales, accesibilidad básica, navegación entre módulos.
+
+**Fase 8 - Pruebas y lanzamiento:** Suite Playwright 75% cobertura, build limpio 0 errores/0 warnings, pruebas de runtime, documentación final, deploy y checklist de lanzamiento.
 
 ---
 
