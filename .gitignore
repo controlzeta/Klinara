@@ -55,3 +55,6 @@ CodeCoverage/
 *.VisualState.xml
 TestResult.xml
 nunit-*.xml
+/obj_release
+/.vs/Klinara.slnx/config
+/.vs/Klinara.slnx/FileContentIndex

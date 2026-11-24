@@ -1,0 +1,37 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\GitHub\\Klinara\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{0833EF2C-D748-7B81-28C3-589070A6540C}|Klinara.Web\\Klinara.Web.csproj|c:\\github\\klinara\\klinara.web\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{0833EF2C-D748-7B81-28C3-589070A6540C}|Klinara.Web\\Klinara.Web.csproj|solutionrelative:klinara.web\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 0,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "appsettings.json",
+              "DocumentMoniker": "C:\\GitHub\\Klinara\\Klinara.Web\\appsettings.json",
+              "RelativeDocumentMoniker": "Klinara.Web\\appsettings.json",
+              "ToolTip": "C:\\GitHub\\Klinara\\Klinara.Web\\appsettings.json",
+              "RelativeToolTip": "Klinara.Web\\appsettings.json",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABUAAAAnAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2026-11-24T15:13:05.546Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
