@@ -45,6 +45,7 @@
 - **Base de datos:** SQL Server (por requerimiento del usuario).
 - **Zona horaria:** Configurar por consultorio y presentar citas en esa zona.
 - **Enfoque:** Mobile-first en el diseño de componentes Blazor.
+- **Sistema visual:** ver `docs/UI_DESIGN_SYSTEM.md`; el plan de rediseño completo está en `docs/PLAN_UI_REDESIGN.md`.
 - **Pruebas:** Suite Playwright con meta 75% cobertura; flujos críticos en CI antes de liberar.
 
 ### 5. Consideraciones de Cumplimiento (México)
@@ -102,7 +103,7 @@
 
 **Fase 6 - Notificaciones:** Proveedor WhatsApp/SMS investigado e integrado, plantillas de confirmación/alertas, envío por ambos canales según disponibilidad.
 
-**Fase 7 - UI y UX:** Componentes Blazor, diseño mobile-first, mockup conectado a datos reales, accesibilidad básica, navegación entre módulos.
+**Fase 7 - Sistema visual y rediseño integral:** Rediseñar todas las pantallas del MVP con experiencia mobile-first, temas claro/oscuro, accesibilidad, estados de carga/error/vacío, navegación por rol y revisión de codificación UTF-8. El dashboard de referencia está aprobado; la integración sigue pendiente. Ver `docs/UI_DESIGN_SYSTEM.md` y el plan por módulos en `docs/PLAN_UI_REDESIGN.md`.
 
 **Fase 8 - Pruebas y lanzamiento:** Suite Playwright 75% cobertura, build limpio 0 errores/0 warnings, pruebas de runtime, documentación final, deploy y checklist de lanzamiento.
 
