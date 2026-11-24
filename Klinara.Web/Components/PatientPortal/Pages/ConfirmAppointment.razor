@@ -1,0 +1,107 @@
+@page "/portal/{ContextClinicSubdomain}/confirm/{ConfirmationToken}"
+@layout PatientPortalLayout
+@rendermode InteractiveServer
+@inject IPatientPortalService PortalService
+@inject PatientPortalSessionState SessionState
+@inject NavigationManager NavigationManager
+
+<div class="confirm-appointment-card card shadow-sm p-4 my-3 max-w-lg mx-auto" style="max-width: 600px;">
+    @if (_isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary mb-3" role="status"></div>
+            <h5 class="fw-bold">Confirmando tu cita...</h5>
+            <p class="text-muted">Por favor espera un momento mientras validamos tu token.</p>
+        </div>
+    }
+    else if (_isSuccess)
+    {
+        <div class="text-center py-4">
+            <div class="rounded-circle bg-success text-white d-inline-flex align-items-center justify-content-center mb-3"
+                 style="width: 64px; height: 64px;">
+                <i class="bi bi-check-lg fs-1"></i>
+            </div>
+            <h3 class="fw-bold text-success mb-2">¡Cita Confirmada!</h3>
+            <p class="text-muted">Tu cita ha sido confirmada satisfactoriamente en el sistema.</p>
+
+            <div class="alert alert-light border my-4 text-start">
+                <p class="mb-1"><strong>Clínica:</strong> @ContextClinicSubdomain</p>
+                <p class="mb-0 text-muted small">Hemos actualizado el estado de tu cita a <strong>Confirmada</strong>.</p>
+            </div>
+
+            <div class="d-grid gap-2">
+                <a class="btn btn-primary" href="/portal/@ContextClinicSubdomain/appointment/@ConfirmationToken">
+                    <i class="bi bi-calendar-event me-2"></i>Ver detalles de mi cita
+                </a>
+                <a class="btn btn-outline-secondary" href="/portal/@ContextClinicSubdomain">
+                    Volver al inicio
+                </a>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="text-center py-4">
+            <div class="rounded-circle bg-danger text-white d-inline-flex align-items-center justify-content-center mb-3"
+                 style="width: 64px; height: 64px;">
+                <i class="bi bi-x-lg fs-1"></i>
+            </div>
+            <h3 class="fw-bold text-danger mb-2">No se pudo confirmar</h3>
+            <p class="text-muted mb-4">@(_errorMessage ?? "El enlace de confirmación es inválido o ha expirado.")</p>
+
+            <div class="d-grid gap-2">
+                <a class="btn btn-primary" href="/portal/@ContextClinicSubdomain/verify">
+                    Reservar una nueva cita
+                </a>
+                <a class="btn btn-outline-secondary" href="/portal/@ContextClinicSubdomain">
+                    Ir al inicio
+                </a>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string ContextClinicSubdomain { get; set; } = "";
+    [Parameter] public string ConfirmationToken { get; set; } = "";
+
+    private bool _isLoading = true;
+    private bool _isSuccess = false;
+    private string? _errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        SessionState.ClinicSubdomain = ContextClinicSubdomain;
+
+        if (string.IsNullOrWhiteSpace(ConfirmationToken))
+        {
+            _isLoading = false;
+            _errorMessage = "El token de confirmación es requerido.";
+            return;
+        }
+
+        try
+        {
+            var result = await PortalService.ConfirmAppointmentAsync(ConfirmationToken);
+            if (result.Success)
+            {
+                _isSuccess = true;
+                SessionState.ConfirmationToken = ConfirmationToken;
+            }
+            else
+            {
+                _isSuccess = false;
+                _errorMessage = result.Error ?? "El token no es válido o ya fue procesado.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _isSuccess = false;
+            _errorMessage = $"Error al confirmar la cita: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+}

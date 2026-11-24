@@ -504,4 +504,51 @@ public class PatientTokenServiceTests
         // Assert - Todos deben ser únicos
         Assert.Equal(10, tokens.Distinct().Count());
     }
+
+    [Fact]
+    public async Task CreateAppointmentManagementTokenAsync_CreatesTokenLinkedToAppointment()
+    {
+        // Arrange
+        await using var context = CreateContext(nameof(CreateAppointmentManagementTokenAsync_CreatesTokenLinkedToAppointment));
+        var clinic = CreateClinic("Test Clinic", "test-clinic");
+        context.Clinics.Add(clinic);
+
+        var user = CreateUser("patient@test.com", clinic.Id);
+        context.Users.Add(user);
+
+        var patient = CreatePatient(clinic.Id, user.Id, "Paciente Test", user.Email);
+        context.Patients.Add(patient);
+
+        var appointmentId = Guid.NewGuid();
+        await context.SaveChangesAsync();
+
+        var service = CreateTokenService(context);
+
+        // Act
+        var token = await service.CreateAppointmentManagementTokenAsync(patient.Id, appointmentId, clinic.Id);
+
+        // Assert
+        Assert.NotNull(token);
+        Assert.Equal(patient.Id, token.PatientId);
+        Assert.Equal(appointmentId, token.AppointmentId);
+        Assert.Equal(clinic.Id, token.ClinicId);
+        Assert.Equal(PatientTokenType.AppointmentManagement, token.Type);
+        Assert.True(token.ExpiresAt > DateTime.UtcNow.AddDays(40));
+
+        // Validate without consuming
+        var validated = await service.ValidateTokenAsync(token.Token, PatientTokenType.AppointmentManagement);
+        Assert.NotNull(validated);
+        Assert.Equal(appointmentId, validated!.AppointmentId);
+
+        // Validate allowUsed when used
+        var consumed = await service.ValidateAndConsumeTokenAsync(token.Token, PatientTokenType.AppointmentManagement);
+        Assert.NotNull(consumed);
+        Assert.NotNull(consumed!.UsedAt);
+
+        var normalCheck = await service.ValidateTokenAsync(token.Token, PatientTokenType.AppointmentManagement, allowUsed: false);
+        Assert.Null(normalCheck);
+
+        var allowedCheck = await service.ValidateTokenAsync(token.Token, PatientTokenType.AppointmentManagement, allowUsed: true);
+        Assert.NotNull(allowedCheck);
+    }
 }

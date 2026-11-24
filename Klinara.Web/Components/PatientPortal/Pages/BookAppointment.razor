@@ -1,75 +1,229 @@
-@page "/portal/@ContextClinicSubdomain/booking"
-@using Microsoft.AspNetCore.Components.Authorization
-@using Klinara.Web
-@using Klinara.Web.Services
+@page "/portal/{ContextClinicSubdomain}/booking"
+@layout PatientPortalLayout
+@rendermode InteractiveServer
+@inject IPatientPortalService PortalService
+@inject PatientPortalSessionState SessionState
+@inject NavigationManager NavigationManager
 
-<div class="booking-section p-4">
-    <h2 class="k-page-heading mb-3">
-        <span>Klinara</span>
-        <span class="k-breadcrumbs">
-            <strong>Reservar cita</strong>
-        </span>
-    </h2>
-    
-    @if (SelectedDoctor != null) {
-        <div class="card mb-3">
-            <div class="card-body">
-                <h5 class="card-title">@SelectedDoctor.DoctorName</h5>
-                <p class="card-text">Horario disponible: @SelectedDoctor.WeeklySchedule.Count horas semanales</p>
-            </div>
+<div class="booking-section card shadow-sm p-4 my-3">
+    <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2">
+        <h3 class="fw-bold text-primary mb-0">Reserva de cita</h3>
+        @if (!string.IsNullOrEmpty(SessionState.PatientEmail))
+        {
+            <span class="badge bg-light text-dark border">
+                <i class="bi bi-person-check me-1 text-success"></i>@SessionState.PatientEmail
+            </span>
+        }
+    </div>
+
+    @if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            <span>@_errorMessage</span>
+            <button type="button" class="btn-close" @onclick="() => _errorMessage = null"></button>
         </div>
-        
-        <div class="d-grid gap-2 d-md-block">
-            <a class="btn btn-primary" href="#">
-                <span class="bi bi-calendar-check-fill"></span> Ver horarios disponibles
-            </a>
-        </div>
-    } else {
-        <p class="text-muted mb-3">Selecciona un doctor para ver los horarios disponibles.</p>
-        
-        <p>Selecciona un doctor de la lista para ver disponibilidad.</p>
     }
-    
-    @if (SelectedSlot != null) {
-        <div class="alert alert-success mt-3">
-            <h4>Cita seleccionada</h4>
-            <p>
-                <strong>Horario:</strong> @SelectedSlot.StartAt.ToShortTimeString() - @SelectedSlot.EndAt.ToShortTimeString() 
-                (@SelectedSlot.StartAt.ToString("ddd"))
-            </p>
-            <div class="d-grid gap-2 d-md-block">
-                <button class="btn btn-primary" @onclick="ConfirmSelected">Confirmar cita</button>
-                <button class="btn btn-outline-secondary" @onclick="CancelSelection">Cancelar</button>
-            </div>
+
+    <!-- Paso 1: Selección de doctor -->
+    @if (_availableDoctors == null)
+    {
+        <div class="d-flex align-items-center justify-content-center py-5">
+            <div class="spinner-border text-primary me-2" role="status"></div>
+            <span>Cargando profesionales disponibles...</span>
         </div>
+    }
+    else
+    {
+        <DoctorSelector Doctors="_availableDoctors"
+                        SelectedDoctor="_selectedDoctor"
+                        SelectedDoctorChanged="OnDoctorSelected" />
+
+        <!-- Paso 2: Selección de horario si hay doctor elegido -->
+        @if (_selectedDoctor != null)
+        {
+            <div class="border-top pt-4 mt-2">
+                <SlotPicker AvailableSlots="_availableSlots"
+                            SelectedSlot="_selectedSlot"
+                            SelectedSlotChanged="OnSlotSelected"
+                            IsLoading="_loadingSlots" />
+            </div>
+        }
+
+        <!-- Paso 3: Detalles finales si hay slot elegido -->
+        @if (_selectedSlot != null && _selectedDoctor != null)
+        {
+            <div class="card bg-light border-primary mt-4 p-3 shadow-sm">
+                <h5 class="fw-bold text-primary mb-3">
+                    <i class="bi bi-card-checklist me-2"></i>Confirmar detalles de la cita
+                </h5>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-12 col-md-6">
+                        <strong>Profesional:</strong> @_selectedDoctor.DoctorName
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <strong>Fecha y hora:</strong> @_selectedSlot.StartAt.ToString("dd/MM/yyyy HH:mm") - @_selectedSlot.EndAt.ToString("HH:mm")
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label fw-bold">Tipo de cita:</label>
+                        <select class="form-select" @bind="_appointmentType">
+                            <option value="@AppointmentType.FirstVisit">Primera vez</option>
+                            <option value="@AppointmentType.FollowUp">Seguimiento / Control</option>
+                            <option value="@AppointmentType.Procedure">Procedimiento</option>
+                            <option value="@AppointmentType.Telemedicine">Telemedicina</option>
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label fw-bold">Notas o motivo de consulta (opcional):</label>
+                        <input type="text" class="form-control" @bind="_notes" placeholder="Ej. Dolor dental leve, revisión..." maxlength="500" />
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button class="btn btn-primary px-4 py-2" @onclick="ConfirmBooking" disabled="_isBooking">
+                        @if (_isBooking)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                            <span>Reservando...</span>
+                        }
+                        else
+                        {
+                            <i class="bi bi-calendar-check me-2"></i>
+                            <span>Confirmar reserva</span>
+                        }
+                    </button>
+                    <button class="btn btn-outline-secondary" @onclick="() => _selectedSlot = null" disabled="_isBooking">
+                        Cambiar horario
+                    </button>
+                </div>
+            </div>
+        }
     }
 </div>
 
 @code {
     [Parameter] public string ContextClinicSubdomain { get; set; } = "";
-    
-    private DoctorAvailabilityDto? SelectedDoctor { get; set; }
-    private List<DoctorAvailabilityDto> AvailableDoctors { get; set; } = new();
-    private List<TimeSlot> AvailableSlots { get; set; } = new();
-    private TimeSlot? SelectedSlot { get; set; }
+    [SupplyParameterFromQuery(Name = "token")] public string? QueryToken { get; set; }
 
-    private async Task DoctorSeleccionadoCambio(DoctorAvailabilityDto doctor)
+    private List<DoctorAvailabilityDto>? _availableDoctors;
+    private DoctorAvailabilityDto? _selectedDoctor;
+    private List<TimeSlot> _availableSlots = new();
+    private TimeSlot? _selectedSlot;
+    private AppointmentType _appointmentType = AppointmentType.FollowUp;
+    private string? _notes;
+    private bool _loadingSlots = false;
+    private bool _isBooking = false;
+    private string? _errorMessage;
+
+    protected override async Task OnInitializedAsync()
     {
-        SelectedDoctor = doctor;
+        // Token retrieval: prefer SessionState, fallback to query string
+        if (string.IsNullOrEmpty(SessionState.PortalToken) && !string.IsNullOrEmpty(QueryToken))
+        {
+            SessionState.PortalToken = QueryToken;
+        }
+
+        if (string.IsNullOrEmpty(SessionState.PortalToken))
+        {
+            // Sin token de acceso al portal, redirigir a verificación
+            NavigationManager.NavigateTo($"/portal/{ContextClinicSubdomain}/verify");
+            return;
+        }
+
+        SessionState.ClinicSubdomain = ContextClinicSubdomain;
+
+        try
+        {
+            _availableDoctors = await PortalService.GetAvailableDoctorsAsync(ContextClinicSubdomain);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error al cargar profesionales: {ex.Message}";
+            _availableDoctors = new List<DoctorAvailabilityDto>();
+        }
     }
 
-    private void SeleccionarSlot(TimeSlot slot)
+    private async Task OnDoctorSelected(DoctorAvailabilityDto doc)
     {
-        SelectedSlot = slot;
+        _selectedDoctor = doc;
+        _selectedSlot = null;
+        _availableSlots.Clear();
+        _loadingSlots = true;
+        _errorMessage = null;
+
+        try
+        {
+            // Cargar slots dentro del horizonte permitido de 45 días (mínimo 24 horas adelante)
+            var start = DateTime.UtcNow.Date.AddDays(1);
+            var end = start.AddDays(45);
+            _availableSlots = await PortalService.GetAvailableSlotsAsync(ContextClinicSubdomain, doc.DoctorId, start, end);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error al cargar horarios: {ex.Message}";
+        }
+        finally
+        {
+            _loadingSlots = false;
+        }
     }
 
-    private void ConfirmSelected()
+    private void OnSlotSelected(TimeSlot slot)
     {
-        // TODO: Confirmar cita
+        _selectedSlot = slot;
     }
 
-    private void CancelSelection()
+    private async Task ConfirmBooking()
     {
-        SelectedSlot = null;
+        if (_selectedSlot == null || _selectedDoctor == null)
+            return;
+
+        var token = SessionState.PortalToken;
+        if (string.IsNullOrEmpty(token))
+        {
+            _errorMessage = "Tu sesión ha expirado. Por favor ingresa tu correo nuevamente.";
+            return;
+        }
+
+        _isBooking = true;
+        _errorMessage = null;
+
+        try
+        {
+            var dto = new BookAppointmentDto(
+                _selectedDoctor.DoctorId,
+                _selectedSlot.StartAt,
+                _selectedSlot.EndAt,
+                _appointmentType,
+                _notes
+            );
+
+            var result = await PortalService.BookAppointmentAsync(token, dto);
+
+            if (result.Success)
+            {
+                // Guardar tokens de confirmación y gestión en el estado
+                SessionState.LastAppointmentId = result.AppointmentId;
+                SessionState.ConfirmationToken = result.ConfirmationToken;
+                SessionState.ManagementToken = result.ManagementToken;
+
+                // Redirigir a vista de cita usando el token de gestión
+                var targetToken = result.ManagementToken ?? result.ConfirmationToken;
+                NavigationManager.NavigateTo($"/portal/{ContextClinicSubdomain}/appointment/{targetToken}");
+            }
+            else
+            {
+                _errorMessage = result.Error ?? "No fue posible reservar la cita. Por favor intenta con otro horario.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error al reservar: {ex.Message}";
+        }
+        finally
+        {
+            _isBooking = false;
+        }
     }
 }

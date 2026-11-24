@@ -1,55 +1,65 @@
 @using Klinara.Web.Data
+@using System.Globalization
 
 <div class="slot-picker-card">
-    <h3>Seleccionar horario</h3>
-    
-    <div class="slot-grid">
-        @foreach (var slot in AvailableSlots) {
-            string className = slot.IsBooked ? "booked" : slot.IsBlocked ? "blocked" : "available";
-            <div class="slot-item @className" @onclick="() => SelectSlot(slot)">
-                <span class="slot-time">
-                    @slot.StartAt.ToShortTimeString() - @slot.EndAt.ToShortTimeString()
-                </span>
-                <small>@slot.StartAt.ToString("ddd")</small>
-                @if (slot.IsBooked) {
-                    <span class="status-booked">Reservado</span>
-                } else if (slot.IsBlocked) {
-                    <span class="status-blocked">Bloqueado</span>
-                } else {
-                    <span class="status-available">Disponible</span>
-                }
-            </div>
-        }
-    </div>
-    @if (AvailableSlots.Count == 0) {
-        <p class="text-muted">No hay slots disponibles</p>
+    <h5 class="fw-bold mb-3">Horarios disponibles</h5>
+
+    @if (IsLoading)
+    {
+        <div class="d-flex align-items-center justify-content-center py-4">
+            <div class="spinner-border text-primary me-2" role="status"></div>
+            <span>Buscando horarios disponibles...</span>
+        </div>
     }
-    <div class="slot-footer">
-        <button class="btn btn-primary w-100" @onclick="ConfirmSelection">
-            <span class="bi bi-check-circle-fill"></span> Confirmar selección
-        </button>
-    </div>
+    else if (AvailableSlots == null || AvailableSlots.Count == 0)
+    {
+        <div class="alert alert-info">
+            <span>No se encontraron horarios libres en el horizonte de los próximos días para este doctor. Intenta con otro profesional o fecha.</span>
+        </div>
+    }
+    else
+    {
+        var groupedSlots = AvailableSlots
+            .OrderBy(s => s.StartAt)
+            .GroupBy(s => s.StartAt.Date);
+
+        <div class="slot-groups">
+            @foreach (var dayGroup in groupedSlots)
+            {
+                var culture = new CultureInfo("es-MX");
+                var dateStr = dayGroup.Key.ToString("dddd d 'de' MMMM", culture);
+
+                <div class="mb-3">
+                    <h6 class="text-uppercase text-muted fw-bold small mb-2">@dateStr</h6>
+                    <div class="d-flex flex-wrap gap-2">
+                        @foreach (var slot in dayGroup)
+                        {
+                            var isSelected = SelectedSlot?.Id == slot.Id;
+                            var isAvailable = !slot.IsBooked && !slot.IsBlocked;
+
+                            <button type="button"
+                                    class="btn btn-sm @(isSelected ? "btn-primary" : isAvailable ? "btn-outline-primary" : "btn-light text-muted disabled")"
+                                    disabled="@(!isAvailable)"
+                                    @onclick="() => SelectSlot(slot)">
+                                @slot.StartAt.ToString("HH:mm") - @slot.EndAt.ToString("HH:mm")
+                            </button>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
 </div>
 
 @code {
     [Parameter] public List<TimeSlot> AvailableSlots { get; set; } = new();
-    [Parameter] public string? ClinicName { get; set; }
-    [Parameter] public string? ContextClinicSubdomain { get; set; }
-    
-    [Inject] IScheduleService _scheduleService { get; set; } = null!;
-    [Inject] NavigationManager NavigationManager { get; set; } = null!;
-    
-    private TimeSlot? SelectedSlot { get; set; }
-    private DoctorAvailabilityDto? SelectedDoctor { get; set; }
+    [Parameter] public TimeSlot? SelectedSlot { get; set; }
+    [Parameter] public EventCallback<TimeSlot> SelectedSlotChanged { get; set; }
+    [Parameter] public bool IsLoading { get; set; }
 
-    private void SelectSlot(TimeSlot slot) {
+    private async Task SelectSlot(TimeSlot slot)
+    {
         SelectedSlot = slot;
-    }
-
-    private async Task ConfirmSelection() {
-        if (SelectedSlot == null) return;
-        
-        // Navigate to confirmation page with slot details
-        NavigationManager.NavigateTo($"/portal/{ContextClinicSubdomain}/confirm?slot={SelectedSlot.StartAt:yyyy-MM-ddTHH:mm}&doctor={SelectedDoctor?.DoctorId}");
+        await SelectedSlotChanged.InvokeAsync(slot);
     }
 }

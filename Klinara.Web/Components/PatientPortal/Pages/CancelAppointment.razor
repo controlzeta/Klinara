@@ -1,0 +1,227 @@
+@page "/portal/{ContextClinicSubdomain}/cancel"
+@page "/portal/{ContextClinicSubdomain}/cancel/{Token}"
+@layout PatientPortalLayout
+@rendermode InteractiveServer
+@inject IPatientPortalService PortalService
+@inject PatientPortalSessionState SessionState
+@inject NavigationManager NavigationManager
+
+<div class="cancel-appointment-card card shadow-sm p-4 my-3 max-w-lg mx-auto" style="max-width: 600px;">
+    @if (_isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary mb-3" role="status"></div>
+            <h5>Cargando datos de la cita...</h5>
+        </div>
+    }
+    else if (_cancelledResult != null)
+    {
+        <div class="text-center py-4">
+            <div class="rounded-circle bg-warning text-dark d-inline-flex align-items-center justify-content-center mb-3"
+                 style="width: 64px; height: 64px;">
+                <i class="bi bi-x-circle fs-1"></i>
+            </div>
+            <h3 class="fw-bold mb-2">Cita Cancelada</h3>
+            <p class="text-muted">La cita ha sido cancelada en el sistema.</p>
+
+            @if (_cancelledResult.IsLateCancellation)
+            {
+                <div class="alert alert-warning text-start my-3">
+                    <h6 class="fw-bold mb-1"><i class="bi bi-exclamation-triangle-fill me-1"></i> Cancelación tardía (&lt;24h)</h6>
+                    <p class="small mb-1">
+                        Esta cancelación se realizó con menos de 24 horas de anticipación.
+                    </p>
+                    <p class="small mb-0">
+                        Marcas de impuntualidad acumuladas: <strong>@_cancelledResult.LateCancellationCount / 3</strong>.
+                    </p>
+                </div>
+            }
+
+            @if (_cancelledResult.IsBlocked)
+            {
+                <div class="alert alert-danger text-start my-3">
+                    <h6 class="fw-bold mb-1"><i class="bi bi-slash-circle me-1"></i> Cuenta bloqueada para reservas en línea</h6>
+                    <p class="small mb-0">
+                        Has acumulado 3 marcas de impuntualidad. Para agendar futuras citas, comunícate directamente con el personal de la clínica para solicitar tu desbloqueo.
+                    </p>
+                </div>
+            }
+
+            <div class="d-grid gap-2 mt-4">
+                <a class="btn btn-primary" href="/portal/@ContextClinicSubdomain">
+                    Volver al portal
+                </a>
+            </div>
+        </div>
+    }
+    else if (_appointment == null)
+    {
+        <div class="text-center py-4">
+            <div class="rounded-circle bg-danger-subtle text-danger d-inline-flex align-items-center justify-content-center mb-3"
+                 style="width: 56px; height: 56px;">
+                <i class="bi bi-calendar-x fs-2"></i>
+            </div>
+            <h4 class="fw-bold mb-2">No se encontró la cita para cancelar</h4>
+            <p class="text-muted mb-4">@(_errorMessage ?? "El token no es válido o la cita ya fue cancelada previamente.")</p>
+            <a class="btn btn-outline-secondary" href="/portal/@ContextClinicSubdomain">
+                Volver al inicio
+            </a>
+        </div>
+    }
+    else
+    {
+        <h4 class="fw-bold text-danger mb-3">
+            <i class="bi bi-exclamation-octagon me-2"></i>Cancelar Cita
+        </h4>
+
+        <div class="card bg-light border mb-3 p-3">
+            <div class="fw-bold mb-1">@_appointment.DoctorName</div>
+            <div class="text-muted small mb-2">
+                @_appointment.StartAt.ToString("dddd d 'de' MMMM, yyyy - HH:mm", new System.Globalization.CultureInfo("es-MX"))
+            </div>
+            <div class="small"><strong>Paciente:</strong> @_appointment.PatientName</div>
+        </div>
+
+        @if (_isLateWarning)
+        {
+            <div class="alert alert-warning">
+                <h6 class="fw-bold mb-1"><i class="bi bi-clock-history me-1"></i> Aviso de política de cancelación</h6>
+                <p class="small mb-0">
+                    Faltan menos de 24 horas para el horario de tu cita. Cancelar ahora generará una <strong>marca de impuntualidad</strong> en tu historial. Al acumular 3 marcas, no podrás reservar por internet y deberás contactar a la clínica.
+                </p>
+            </div>
+        }
+
+        <div class="mb-3">
+            <label class="form-label fw-bold">Motivo de cancelación:</label>
+            <textarea class="form-control" rows="3" @bind="_cancellationReason" placeholder="Indica brevemente el motivo..."></textarea>
+        </div>
+
+        @if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <div class="alert alert-danger">@_errorMessage</div>
+        }
+
+        <div class="d-flex gap-2">
+            <button class="btn btn-danger flex-grow-1" @onclick="ConfirmCancel" disabled="_isCancelling">
+                @if (_isCancelling)
+                {
+                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                    <span>Procesando...</span>
+                }
+                else
+                {
+                    <span>Confirmar cancelación</span>
+                }
+            </button>
+            <a class="btn btn-outline-secondary" href="/portal/@ContextClinicSubdomain/appointment/@GetEffectiveToken()">
+                No cancelar
+            </a>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string ContextClinicSubdomain { get; set; } = "";
+    [Parameter] public string? Token { get; set; }
+
+    private PortalAppointmentView? _appointment;
+    private PortalCancellationResult? _cancelledResult;
+    private bool _isLoading = true;
+    private bool _isCancelling = false;
+    private bool _isLateWarning = false;
+    private string _cancellationReason = "Cancelación solicitada por paciente";
+    private string? _errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        SessionState.ClinicSubdomain = ContextClinicSubdomain;
+        var token = GetEffectiveToken();
+
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            _isLoading = false;
+            _errorMessage = "No se proporcionó un token de cita válido.";
+            return;
+        }
+
+        try
+        {
+            _appointment = await PortalService.GetAppointmentViewAsync(token);
+            if (_appointment == null)
+            {
+                _errorMessage = "No se encontró la cita o ya no se encuentra activa.";
+            }
+            else
+            {
+                // Regla <24h: advertencia de impuntualidad
+                _isLateWarning = (_appointment.StartAt - DateTime.UtcNow) < TimeSpan.FromHours(24);
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error al cargar cita: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private string? GetEffectiveToken()
+    {
+        if (!string.IsNullOrWhiteSpace(Token))
+            return Token.Trim();
+
+        if (!string.IsNullOrWhiteSpace(SessionState.ManagementToken))
+            return SessionState.ManagementToken;
+
+        if (!string.IsNullOrWhiteSpace(SessionState.ConfirmationToken))
+            return SessionState.ConfirmationToken;
+
+        if (!string.IsNullOrWhiteSpace(SessionState.PortalToken))
+            return SessionState.PortalToken;
+
+        return null;
+    }
+
+    private async Task ConfirmCancel()
+    {
+        var token = GetEffectiveToken();
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            _errorMessage = "Token no disponible.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_cancellationReason))
+        {
+            _errorMessage = "Por favor indica el motivo de la cancelación.";
+            return;
+        }
+
+        _isCancelling = true;
+        _errorMessage = null;
+
+        try
+        {
+            var result = await PortalService.CancelAppointmentAsync(token, _cancellationReason.Trim());
+            if (result.Success)
+            {
+                _cancelledResult = result;
+            }
+            else
+            {
+                _errorMessage = result.Error ?? "No fue posible cancelar la cita.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error al procesar cancelación: {ex.Message}";
+        }
+        finally
+        {
+            _isCancelling = false;
+        }
+    }
+}

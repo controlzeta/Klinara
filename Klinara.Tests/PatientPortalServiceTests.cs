@@ -810,4 +810,77 @@ public class PatientPortalServiceTests
         Assert.All(mondaySlots, s => Assert.False(s.IsBooked));
         Assert.All(mondaySlots, s => Assert.False(s.IsBlocked));
     }
+
+    [Fact]
+    public async Task BookAppointmentAsync_ReturnsManagementToken_AllowsViewAndCancel()
+    {
+        // Arrange
+        await using var context = CreateContext(nameof(BookAppointmentAsync_ReturnsManagementToken_AllowsViewAndCancel));
+        var clinic = CreateClinic("Test Clinic", "test-clinic");
+        context.Clinics.Add(clinic);
+
+        var doctor = CreateUser("doctor@test.com", clinic.Id);
+        context.Users.Add(doctor);
+
+        var user = CreateUser("patient@test.com", clinic.Id);
+        context.Users.Add(user);
+
+        var patient = CreatePatient(clinic.Id, user.Id, "Paciente Test", user.Email);
+        context.Patients.Add(patient);
+
+        var schedule = CreateSchedule(clinic.Id, doctor.Id, DayOfWeek.Monday, new TimeOnly(9, 0), new TimeOnly(14, 0));
+        context.DoctorSchedules.Add(schedule);
+
+        await context.SaveChangesAsync();
+
+        var configuration = CreateTestConfiguration();
+        var emailSender = new Mock<IEmailSender<ApplicationUser>>();
+        var service = CreatePortalService(context, configuration, emailSender.Object);
+
+        var tokenLogger = new LoggerFactory().CreateLogger<PatientTokenService>();
+        var tokenService = new PatientTokenService(context, tokenLogger);
+        var portalToken = await tokenService.CreatePortalAccessTokenAsync(patient.Id, clinic.Id);
+
+        var targetMonday = new DateTime(2026, 12, 7, 10, 0, 0, DateTimeKind.Utc);
+        var bookDto = new BookAppointmentDto(
+            doctor.Id,
+            targetMonday,
+            targetMonday.AddMinutes(30),
+            AppointmentType.FirstVisit,
+            "Notas de gestión"
+        );
+
+        // Act 1: Reservar
+        var bookingResult = await service.BookAppointmentAsync(portalToken.Token, bookDto);
+
+        // Assert 1: Retorna confirmationToken y managementToken
+        Assert.True(bookingResult.Success);
+        Assert.NotNull(bookingResult.AppointmentId);
+        Assert.NotNull(bookingResult.ConfirmationToken);
+        Assert.NotNull(bookingResult.ManagementToken);
+
+        // Act 2: Consultar cita con ManagementToken
+        var view = await service.GetAppointmentViewAsync(bookingResult.ManagementToken!);
+        Assert.NotNull(view);
+        Assert.Equal(bookingResult.AppointmentId, view!.AppointmentId);
+        Assert.Equal(AppointmentStatus.Scheduled, view.Status);
+
+        // Act 3: Confirmar con ConfirmationToken
+        var confirmResult = await service.ConfirmAppointmentAsync(bookingResult.ConfirmationToken!);
+        Assert.True(confirmResult.Success);
+
+        // Act 4: Consultar cita con ConfirmationToken usado (debe permitir ver la cita)
+        var viewAfterConfirm = await service.GetAppointmentViewAsync(bookingResult.ConfirmationToken!);
+        Assert.NotNull(viewAfterConfirm);
+        Assert.Equal(AppointmentStatus.Confirmed, viewAfterConfirm!.Status);
+
+        // Act 5: Cancelar con ManagementToken
+        var cancelResult = await service.CancelAppointmentAsync(bookingResult.ManagementToken!, "Motivo personal");
+        Assert.True(cancelResult.Success);
+
+        // Verificar cita cancelada
+        var cancelledAppointment = await context.Appointments.FindAsync(bookingResult.AppointmentId.Value);
+        Assert.NotNull(cancelledAppointment);
+        Assert.Equal(AppointmentStatus.CancelledByPatient, cancelledAppointment!.Status);
+    }
 }

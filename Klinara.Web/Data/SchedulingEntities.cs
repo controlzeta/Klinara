@@ -315,7 +315,8 @@ public enum PatientTokenType
     PortalAccess = 1,
     AppointmentConfirmation = 2,
     AppointmentReminder = 3,
-    EmailVerification = 4
+    EmailVerification = 4,
+    AppointmentManagement = 5
 }
 
 public class PatientToken

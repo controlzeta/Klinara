@@ -3,6 +3,14 @@
   "WorkspaceRootPath": "C:\\GitHub\\Klinara\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\GitHub\\Klinara\\skills\\klinara-patientportal\\SKILL.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:skills\\klinara-patientportal\\SKILL.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{0833EF2C-D748-7B81-28C3-589070A6540C}|Klinara.Web\\Klinara.Web.csproj|c:\\github\\klinara\\klinara.web\\components\\patientportal\\components\\otpinput.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{0833EF2C-D748-7B81-28C3-589070A6540C}|Klinara.Web\\Klinara.Web.csproj|solutionrelative:klinara.web\\components\\patientportal\\components\\otpinput.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{0833EF2C-D748-7B81-28C3-589070A6540C}|Klinara.Web\\Klinara.Web.csproj|c:\\github\\klinara\\klinara.web\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
       "RelativeMoniker": "D:0:0:{0833EF2C-D748-7B81-28C3-589070A6540C}|Klinara.Web\\Klinara.Web.csproj|solutionrelative:klinara.web\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
     }
@@ -19,6 +27,32 @@
             {
               "$type": "Document",
               "DocumentIndex": 0,
+              "Title": "SKILL.md",
+              "DocumentMoniker": "C:\\GitHub\\Klinara\\skills\\klinara-patientportal\\SKILL.md",
+              "RelativeDocumentMoniker": "skills\\klinara-patientportal\\SKILL.md",
+              "ToolTip": "C:\\GitHub\\Klinara\\skills\\klinara-patientportal\\SKILL.md",
+              "RelativeToolTip": "skills\\klinara-patientportal\\SKILL.md",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAIAAAANAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
+              "WhenOpened": "2026-11-24T22:07:32.826Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "OtpInput.razor",
+              "DocumentMoniker": "C:\\GitHub\\Klinara\\Klinara.Web\\Components\\PatientPortal\\Components\\OtpInput.razor",
+              "RelativeDocumentMoniker": "Klinara.Web\\Components\\PatientPortal\\Components\\OtpInput.razor",
+              "ToolTip": "C:\\GitHub\\Klinara\\Klinara.Web\\Components\\PatientPortal\\Components\\OtpInput.razor",
+              "RelativeToolTip": "Klinara.Web\\Components\\PatientPortal\\Components\\OtpInput.razor",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAC0AAABFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2026-11-24T21:56:01.588Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
               "Title": "appsettings.json",
               "DocumentMoniker": "C:\\GitHub\\Klinara\\Klinara.Web\\appsettings.json",
               "RelativeDocumentMoniker": "Klinara.Web\\appsettings.json",

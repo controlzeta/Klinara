@@ -1,92 +1,91 @@
 @using Klinara.Web
+@using Klinara.Web.Services
 
-<div class="otp-input-card">
-    <h3>@ContextClinicSubdomain != null ? "Verificar correo - @ContextClinicSubdomain" : "Verificar correo"</h3>
-    
-    <div class="otp-grid">
-        @for (int i = 0; i < 6; i++) {
-            <div class="otp-box">
-                <input type="text" 
-                    oninput="handleOtpInput(@i)" 
-                    class="otp-input" 
-                    maxlength="1"
-                    inputmode="numeric" />
-            </div>
+<div class="otp-input-card p-3 border rounded shadow-sm">
+    <h5 class="fw-bold mb-3 text-center">Código de verificación</h5>
+
+    @if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <div class="alert alert-danger py-2 small">@_errorMessage</div>
+    }
+
+    <div class="d-flex justify-content-center gap-2 mb-3">
+        @for (int i = 0; i < 6; i++)
+        {
+            var idx = i;
+            <input type="text"
+                   maxlength="1"
+                   class="form-control text-center fs-4 fw-bold p-1"
+                   style="width: 45px; height: 50px;"
+                   inputmode="numeric"
+                   value="@_otpBoxes[idx]"
+                   @oninput="(e) => HandleInput(idx, e)" />
         }
     </div>
-    
+
     <div class="otp-footer">
-        <button class="btn btn-primary w-100" @onclick="VerifyCode" @disabled="!CanVerify">
-            Verificar código
+        <button class="btn btn-primary w-100" @onclick="VerifyCode" disabled="@(!CanVerify || _sending)">
+            @if (_sending)
+            {
+                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                <span>Verificando...</span>
+            }
+            else
+            {
+                <span>Verificar código</span>
+            }
         </button>
-        @if (_isResending) {
-            <span>Reenviando en <span>@_resendSeconds</span> segundos</span>
-        }
     </div>
 </div>
 
 @code {
     [Parameter] public string? ContextClinicSubdomain { get; set; }
+    [Parameter] public string? Email { get; set; }
     [Parameter] public EventCallback<string> OnVerificationComplete { get; set; }
-    
-    private string _email = "";
-    private string[] otpBoxes = new string[6];
-    private string _otpCode = "";
-    private bool _otpSent = false;
+
+    private readonly string[] _otpBoxes = new string[6] { "", "", "", "", "", "" };
     private string? _errorMessage;
     private bool _sending = false;
-    private bool _isResending = false;
-    private int _resendSeconds = 60;
-    
-    [Inject] private IPatientPortalService _portalService { get; set; } = null!;
-    [Inject] private NavigationManager _navManager { get; set; } = null!;
-    
-    protected override void OnInitialized() {
-        for (int i = 0; i < 6; i++) {
-            otpBoxes[i] = "";
-        }
+
+    private bool CanVerify => _otpBoxes.All(b => !string.IsNullOrEmpty(b));
+
+    [Inject] private IPatientPortalService PortalService { get; set; } = null!;
+
+    private void HandleInput(int index, ChangeEventArgs e)
+    {
+        var val = e.Value?.ToString() ?? "";
+        _otpBoxes[index] = val.Length > 0 ? val[0].ToString() : "";
     }
-    
-    private void HandleOtpInput(int index) {
-        // Simple input handling
-    }
-    
-    private void VerifyCode() {
-        _otpCode = string.Join("", otpBoxes);
-        if (_otpCode.Length == 6) {
-            VerifyOtpCode();
-        }
-    }
-    
-    private async Task VerifyOtpCode() {
+
+    private async Task VerifyCode()
+    {
+        var code = string.Join("", _otpBoxes);
+        if (code.Length != 6) return;
+
         _sending = true;
-        try {
-            var result = await _portalService.ValidateOtpAndCreatePortalTokenAsync(_email, _otpCode, ContextClinicSubdomain);
-            if (result.Success) {
-                _otpSent = true;
-                OnVerificationComplete.InvokeAsync(_otpCode);
+        _errorMessage = null;
+
+        try
+        {
+            var email = Email ?? "";
+            var subdomain = ContextClinicSubdomain ?? "";
+            var result = await PortalService.ValidateOtpAndCreatePortalTokenAsync(email, code, subdomain);
+            if (result.Success && !string.IsNullOrEmpty(result.PortalToken))
+            {
+                await OnVerificationComplete.InvokeAsync(result.PortalToken);
             }
-            else {
-                _errorMessage = result.Error ?? "Código inválido";
+            else
+            {
+                _errorMessage = result.Error ?? "Código de verificación inválido";
             }
         }
-        catch (Exception ex) {
+        catch (Exception ex)
+        {
             _errorMessage = $"Error al validar el código: {ex.Message}";
         }
-        finally {
+        finally
+        {
             _sending = false;
-        }
-    }
-    
-    private async Task ResendCode() {
-        _otpSent = false;
-        _errorMessage = null;
-        try {
-            await _portalService.SendVerificationEmailAsync(_email, ContextClinicSubdomain);
-            _otpSent = true;
-        }
-        catch (Exception ex) {
-            _errorMessage = $"Error al reenviar el código: {ex.Message}";
         }
     }
 }

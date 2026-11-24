@@ -12,8 +12,9 @@ public interface IPatientTokenService
     Task<PatientToken> CreateAppointmentConfirmationTokenAsync(Guid patientId, Guid appointmentId, Guid clinicId, TimeSpan? expiry = null);
     Task<PatientToken> CreateAppointmentReminderTokenAsync(Guid patientId, Guid appointmentId, Guid clinicId, TimeSpan? expiry = null);
     Task<PatientToken> CreateEmailVerificationTokenAsync(Guid patientId, Guid clinicId, TimeSpan? expiry = null);
+    Task<PatientToken> CreateAppointmentManagementTokenAsync(Guid patientId, Guid appointmentId, Guid clinicId, TimeSpan? expiry = null);
     Task<PatientToken?> ValidateAndConsumeTokenAsync(string token, PatientTokenType expectedType);
-    Task<PatientToken?> ValidateTokenAsync(string token, PatientTokenType expectedType);
+    Task<PatientToken?> ValidateTokenAsync(string token, PatientTokenType expectedType, bool allowUsed = false);
     Task InvalidateTokenAsync(Guid tokenId);
     Task<bool> IsTokenValidAsync(string token, PatientTokenType expectedType);
     Task RevokeAllPatientTokensAsync(Guid patientId, PatientTokenType? type = null);
@@ -29,6 +30,7 @@ public class PatientTokenService : IPatientTokenService
     private static readonly TimeSpan DefaultAppointmentConfirmationExpiry = TimeSpan.FromHours(24);
     private static readonly TimeSpan DefaultAppointmentReminderExpiry = TimeSpan.FromHours(24);
     private static readonly TimeSpan DefaultEmailVerificationExpiry = TimeSpan.FromHours(1);
+    private static readonly TimeSpan DefaultAppointmentManagementExpiry = TimeSpan.FromDays(45);
 
     public PatientTokenService(ApplicationDbContext context, ILogger<PatientTokenService> logger)
     {
@@ -130,6 +132,30 @@ public class PatientTokenService : IPatientTokenService
         return patientToken;
     }
 
+    public async Task<PatientToken> CreateAppointmentManagementTokenAsync(Guid patientId, Guid appointmentId, Guid clinicId, TimeSpan? expiry = null)
+    {
+        var token = GenerateSecureToken();
+        var patientToken = new PatientToken
+        {
+            Id = Guid.NewGuid(),
+            PatientId = patientId,
+            AppointmentId = appointmentId,
+            ClinicId = clinicId,
+            Type = PatientTokenType.AppointmentManagement,
+            Token = token,
+            ExpiresAt = DateTime.UtcNow.Add(expiry ?? DefaultAppointmentManagementExpiry),
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _context.PatientTokens.Add(patientToken);
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("AppointmentManagement token creado para PatientId: {PatientId}, AppointmentId: {AppointmentId}, ClinicId: {ClinicId}",
+            patientId, appointmentId, clinicId);
+
+        return patientToken;
+    }
+
     public async Task<PatientToken?> ValidateAndConsumeTokenAsync(string token, PatientTokenType expectedType)
     {
         if (string.IsNullOrWhiteSpace(token))
@@ -167,7 +193,7 @@ public class PatientTokenService : IPatientTokenService
         return patientToken;
     }
 
-    public async Task<PatientToken?> ValidateTokenAsync(string token, PatientTokenType expectedType)
+    public async Task<PatientToken?> ValidateTokenAsync(string token, PatientTokenType expectedType, bool allowUsed = false)
     {
         if (string.IsNullOrWhiteSpace(token))
             return null;
@@ -182,7 +208,7 @@ public class PatientTokenService : IPatientTokenService
             return null;
         }
 
-        if (patientToken.UsedAt.HasValue)
+        if (!allowUsed && patientToken.UsedAt.HasValue)
         {
             _logger.LogWarning("Token ya usado: {TokenId} (Type: {ExpectedType})", patientToken.Id, expectedType);
             return null;

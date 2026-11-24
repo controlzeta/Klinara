@@ -82,6 +82,7 @@ builder.Services.AddScoped<IAppointmentService, AppointmentService>();
 // Patient Portal services
 builder.Services.AddScoped<IPatientTokenService, PatientTokenService>();
 builder.Services.AddScoped<IPatientPortalService, PatientPortalService>();
+builder.Services.AddScoped<PatientPortalSessionState>();
 
 // Enable controllers and API routes
 builder.Services.AddControllers();

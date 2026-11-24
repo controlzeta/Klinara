@@ -44,7 +44,9 @@ public record PortalBookingResult(
     Guid? AppointmentId = null,
     string? ConfirmationToken = null,
     DateTime? ConfirmationExpiresAt = null,
-    string? Error = null
+    string? Error = null,
+    string? ManagementToken = null,
+    DateTime? ManagementExpiresAt = null
 );
 
 public record PortalConfirmationResult(

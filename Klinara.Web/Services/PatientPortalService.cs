@@ -259,6 +259,10 @@ public class PatientPortalService : IPatientPortalService
             var confirmationToken = await _patientTokenService.CreateAppointmentConfirmationTokenAsync(
                 patient.Id, createdAppointment.Id, patient.ClinicId);
 
+            // Crear token de gestión de cita (45d, para consultar/cancelar cita específica)
+            var managementToken = await _patientTokenService.CreateAppointmentManagementTokenAsync(
+                patient.Id, createdAppointment.Id, patient.ClinicId);
+
             // Enviar email de confirmación
             await SendAppointmentConfirmationEmailAsync(patient.Email!, confirmationToken.Token, createdAppointment, doctor.UserName!);
 
@@ -269,7 +273,9 @@ public class PatientPortalService : IPatientPortalService
                 createdAppointment.Id,
                 confirmationToken.Token,
                 confirmationToken.ExpiresAt,
-                null
+                null,
+                managementToken.Token,
+                managementToken.ExpiresAt
             );
         }
         catch (Exception ex)
@@ -341,13 +347,19 @@ public class PatientPortalService : IPatientPortalService
     {
         try
         {
-            // Validar token (sin consumir, solo lectura)
-            var patientToken = await _patientTokenService.ValidateTokenAsync(portalToken, PatientTokenType.PortalAccess);
+            // 1. Intentar con token de gestión de cita
+            var patientToken = await _patientTokenService.ValidateTokenAsync(portalToken, PatientTokenType.AppointmentManagement);
 
-            // También intentar con AppointmentConfirmation
+            // 2. Intentar con token de confirmación (incluso si ya fue consumido)
             if (patientToken == null)
             {
-                patientToken = await _patientTokenService.ValidateTokenAsync(portalToken, PatientTokenType.AppointmentConfirmation);
+                patientToken = await _patientTokenService.ValidateTokenAsync(portalToken, PatientTokenType.AppointmentConfirmation, allowUsed: true);
+            }
+
+            // 3. Intentar con token de portal
+            if (patientToken == null)
+            {
+                patientToken = await _patientTokenService.ValidateTokenAsync(portalToken, PatientTokenType.PortalAccess, allowUsed: true);
             }
 
             if (patientToken == null)
@@ -362,9 +374,9 @@ public class PatientPortalService : IPatientPortalService
             }
             else
             {
-                // Buscar la cita más reciente del paciente
+                // Buscar la cita más reciente del paciente dentro de su clínica
                 var latestAppointment = await _context.Appointments
-                    .Where(a => a.PatientId == patientToken.PatientId)
+                    .Where(a => a.PatientId == patientToken.PatientId && a.ClinicId == patientToken.ClinicId)
                     .OrderByDescending(a => a.StartAt)
                     .FirstOrDefaultAsync();
 
@@ -376,7 +388,7 @@ public class PatientPortalService : IPatientPortalService
                 .Include(a => a.Doctor)
                 .Include(a => a.Patient)
                 .Include(a => a.Clinic)
-                .FirstOrDefaultAsync(a => a.Id == appointmentId);
+                .FirstOrDefaultAsync(a => a.Id == appointmentId && a.ClinicId == patientToken.ClinicId && a.PatientId == patientToken.PatientId);
 
             if (appointment == null) return null;
 
@@ -405,33 +417,56 @@ public class PatientPortalService : IPatientPortalService
     {
         try
         {
-            // Validar y consumir token PortalAccess
-            var patientToken = await _patientTokenService.ValidateAndConsumeTokenAsync(portalToken, PatientTokenType.PortalAccess);
+            // 1. Intentar validar y consumir token de gestión de cita
+            var patientToken = await _patientTokenService.ValidateAndConsumeTokenAsync(portalToken, PatientTokenType.AppointmentManagement);
+
+            // 2. Si no es gestión, probar token de confirmación
+            if (patientToken == null)
+            {
+                patientToken = await _patientTokenService.ValidateAndConsumeTokenAsync(portalToken, PatientTokenType.AppointmentConfirmation);
+            }
+
+            // 3. Si no, probar token de acceso de portal
+            if (patientToken == null)
+            {
+                patientToken = await _patientTokenService.ValidateAndConsumeTokenAsync(portalToken, PatientTokenType.PortalAccess);
+            }
 
             if (patientToken == null)
             {
                 return new PortalCancellationResult(false, Error: ErrorCodes.PortalAccessTokenInvalid);
             }
 
-            var patient = patientToken.Patient;
-            if (patient == null)
-            {
-                patient = await _context.Patients.FindAsync(patientToken.PatientId);
-            }
-
+            var patient = patientToken.Patient ?? await _context.Patients.FindAsync(patientToken.PatientId);
             if (patient == null)
             {
                 return new PortalCancellationResult(false, Error: ErrorCodes.PatientNotFound);
             }
 
-            // Buscar la cita más próxima del paciente (o la que se quiera cancelar - simplificado)
-            var appointment = await _context.Appointments
-                .Include(a => a.Patient)
-                .Where(a => a.PatientId == patient.Id
-                    && a.Status == AppointmentStatus.Scheduled
-                    && a.StartAt > DateTime.UtcNow)
-                .OrderBy(a => a.StartAt)
-                .FirstOrDefaultAsync();
+            // Buscar la cita específica si el token la tiene
+            Appointment? appointment = null;
+            if (patientToken.AppointmentId.HasValue)
+            {
+                appointment = await _context.Appointments
+                    .Include(a => a.Patient)
+                    .FirstOrDefaultAsync(a => a.Id == patientToken.AppointmentId.Value
+                        && a.ClinicId == patientToken.ClinicId
+                        && a.PatientId == patient.Id
+                        && (a.Status == AppointmentStatus.Scheduled || a.Status == AppointmentStatus.Confirmed));
+            }
+
+            if (appointment == null)
+            {
+                // Buscar la cita próxima activa del paciente
+                appointment = await _context.Appointments
+                    .Include(a => a.Patient)
+                    .Where(a => a.PatientId == patient.Id
+                        && a.ClinicId == patientToken.ClinicId
+                        && (a.Status == AppointmentStatus.Scheduled || a.Status == AppointmentStatus.Confirmed)
+                        && a.StartAt > DateTime.UtcNow)
+                    .OrderBy(a => a.StartAt)
+                    .FirstOrDefaultAsync();
+            }
 
             if (appointment == null)
             {

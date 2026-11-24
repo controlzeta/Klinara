@@ -1,127 +1,164 @@
-@page "/portal/@ContextClinicSubdomain/verify"
-@using Microsoft.AspNetCore.Components.Authorization
-@using Klinara.Web
-@using Klinara.Web.Services
+@page "/portal/{ContextClinicSubdomain}/verify"
+@layout PatientPortalLayout
 @rendermode InteractiveServer
+@inject IPatientPortalService PortalService
+@inject PatientPortalSessionState SessionState
+@inject NavigationManager NavigationManager
 
-<div class="verify-section p-4">
-    <h2 class="k-page-heading mb-3">
-        <span>Klinara</span>
-        <span class="k-breadcrumbs">
-            <strong>Verificar correo</strong>
-        </span>
-    </h2>
+<div class="verify-section card shadow-sm p-4 my-3 max-w-md mx-auto" style="max-width: 500px;">
+    <h3 class="fw-bold mb-3 text-center">Verificación por correo</h3>
+    <p class="text-muted text-center mb-4 small">
+        Ingresa tu correo para recibir un código de seguridad de 6 dígitos.
+    </p>
 
-    @if (_sending) {
-        <div class="alert alert-info">
-            <p>Enviando código de verificación...</p>
+    @if (_isSending)
+    {
+        <div class="d-flex align-items-center justify-content-center py-3">
+            <div class="spinner-border text-primary me-2" role="status"></div>
+            <span>Enviando código...</span>
         </div>
     }
-    else if (_errorMessage != null) {
-        <div class="alert alert-danger">
-            <p>@_errorMessage</p>
+    else if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <div class="alert alert-danger" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            <span>@_errorMessage</span>
         </div>
     }
-    else if (_otpSent) {
-        <div class="alert alert-success">
-            <p>Hemos enviado un código de verificación de 6 dígitos a tu correo.</p>
-            <p>Introduce el código que recibiste.</p>
-        </div>
-    }
-    else {
-        <div class="alert alert-info">
-            <p>Introduce tu correo electrónico y haz clic en "Enviar código" para recibir un código de verificación.</p>
+    else if (_otpSent)
+    {
+        <div class="alert alert-success" role="alert">
+            <i class="bi bi-envelope-check me-2"></i>
+            <span>Hemos enviado un código de 6 dígitos a <strong>@_email</strong>.</span>
         </div>
     }
 
-    @if (!_otpSent && _errorMessage == null) {
+    @if (!_otpSent)
+    {
         <div class="mb-3">
-            <label class="form-label">Correo electrónico</label>
-            <input type="email" @bind="_email" class="form-control" maxlength="254" />
+            <label class="form-label fw-bold">Correo electrónico</label>
+            <input type="email" class="form-control" @bind="_email" placeholder="nombre@correo.com" maxlength="254" />
         </div>
-        <button class="btn btn-primary w-100" @onclick="_SendOtp">Enviar código</button>
+        <button class="btn btn-primary w-100" @onclick="SendOtp" disabled="@_isSending">
+            Enviar código de acceso
+        </button>
     }
-    else if (_otpSent) {
+    else
+    {
         <div class="mb-3">
-            <label class="form-label">Código de 6 dígitos</label>
-            <input type="text" @bind="_otpCode" class="form-control" maxlength="6" />
+            <label class="form-label fw-bold">Código de 6 dígitos</label>
+            <input type="text" class="form-control text-center fs-4 letter-spacing" @bind="_otpCode" maxlength="6" placeholder="000000" />
+            <div class="form-text">El código tiene una validez de 1 hora.</div>
         </div>
-        <button class="btn btn-primary w-100" @onclick="_ValidateCode">Validar código</button>
-        <button class="btn btn-secondary w-100 mt-2" @onclick="_ResendOtp">Reenviar código</button>
+        <button class="btn btn-primary w-100 mb-2" @onclick="ValidateOtp" disabled="@_isSending">
+            Validar y continuar
+        </button>
+        <button class="btn btn-link text-decoration-none w-100" @onclick="ResendOtp" disabled="@_isSending">
+            Reenviar código
+        </button>
     }
+
+    <div class="text-center mt-3 border-top pt-3">
+        <a href="/portal/@ContextClinicSubdomain" class="text-muted text-decoration-none small">
+            &larr; Volver al inicio
+        </a>
+    </div>
 </div>
 
 @code {
     [Parameter] public string ContextClinicSubdomain { get; set; } = "";
 
-    // State
     private string _email = "";
     private string _otpCode = "";
     private bool _otpSent = false;
     private string? _errorMessage;
-    private bool _sending = false;
+    private bool _isSending = false;
 
-    // DI
-    [Inject] private IPatientPortalService _portalService { get; set; } = null!;
-    [Inject] private NavigationManager _navManager { get; set; } = null!;
-
-    protected override void OnInitialized() {
-        _otpSent = false;
-        _errorMessage = null;
+    protected override void OnInitialized()
+    {
+        if (!string.IsNullOrEmpty(SessionState.PatientEmail))
+        {
+            _email = SessionState.PatientEmail;
+        }
     }
 
-    private async Task _SendOtp() {
-        if (string.IsNullOrWhiteSpace(_email)) {
-            _errorMessage = "Introduce un correo electrónico";
+    private async Task SendOtp()
+    {
+        if (string.IsNullOrWhiteSpace(_email) || !_email.Contains('@'))
+        {
+            _errorMessage = "Por favor introduce un correo electrónico válido.";
             return;
         }
 
-        _sending = true;
-        try {
-            var result = await _portalService.SendVerificationEmailAsync(_email, ContextClinicSubdomain);
-            if (result.Success) {
+        _errorMessage = null;
+        _isSending = true;
+
+        try
+        {
+            var result = await PortalService.SendVerificationEmailAsync(_email.Trim(), ContextClinicSubdomain);
+            if (result.Success)
+            {
                 _otpSent = true;
+                SessionState.PatientEmail = _email.Trim();
+                SessionState.ClinicSubdomain = ContextClinicSubdomain;
             }
-            else {
-                _errorMessage = result.Error ?? "Error desconocido";
+            else
+            {
+                _errorMessage = result.Error ?? "Error al enviar el código de verificación.";
             }
         }
-        catch (Exception ex) {
-            _errorMessage = $"Error al enviar el código: {ex.Message}";
+        catch (Exception ex)
+        {
+            _errorMessage = $"Ocurrió un error inesperado: {ex.Message}";
         }
-        finally {
-            _sending = false;
+        finally
+        {
+            _isSending = false;
         }
     }
 
-    private async Task _ValidateCode() {
-        if (string.IsNullOrWhiteSpace(_otpCode) || _otpCode.Length != 6) {
-            _errorMessage = "El código debe tener 6 dígitos";
+    private async Task ValidateOtp()
+    {
+        if (string.IsNullOrWhiteSpace(_otpCode) || _otpCode.Length != 6)
+        {
+            _errorMessage = "El código debe constar de 6 dígitos.";
             return;
         }
 
-        _sending = true;
-        try {
-            var result = await _portalService.ValidateOtpAndCreatePortalTokenAsync(_email, _otpCode, ContextClinicSubdomain);
-            if (result.Success) {
-                _navManager.NavigateTo($"/portal/{ContextClinicSubdomain}/booking?token={result.PortalToken}", forceLoad: true);
+        _errorMessage = null;
+        _isSending = true;
+
+        try
+        {
+            var result = await PortalService.ValidateOtpAndCreatePortalTokenAsync(_email.Trim(), _otpCode.Trim(), ContextClinicSubdomain);
+            if (result.Success && !string.IsNullOrEmpty(result.PortalToken))
+            {
+                SessionState.PortalToken = result.PortalToken;
+                SessionState.PatientEmail = _email.Trim();
+                SessionState.ClinicSubdomain = ContextClinicSubdomain;
+
+                NavigationManager.NavigateTo($"/portal/{ContextClinicSubdomain}/booking");
             }
-            else {
-                _errorMessage = result.Error ?? "Código inválido";
+            else
+            {
+                _errorMessage = result.Error ?? "Código de verificación inválido o expirado.";
             }
         }
-        catch (Exception ex) {
-            _errorMessage = $"Error al validar el código: {ex.Message}";
+        catch (Exception ex)
+        {
+            _errorMessage = $"Ocurrió un error inesperado: {ex.Message}";
         }
-        finally {
-            _sending = false;
+        finally
+        {
+            _isSending = false;
         }
     }
 
-    private async Task _ResendOtp() {
+    private async Task ResendOtp()
+    {
         _otpSent = false;
         _errorMessage = null;
-        await _SendOtp();
+        _otpCode = "";
+        await SendOtp();
     }
-}
 }

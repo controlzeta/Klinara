@@ -1,0 +1,229 @@
+@page "/portal/{ContextClinicSubdomain}/appointment"
+@page "/portal/{ContextClinicSubdomain}/appointment/{Token}"
+@layout PatientPortalLayout
+@rendermode InteractiveServer
+@inject IPatientPortalService PortalService
+@inject PatientPortalSessionState SessionState
+@inject NavigationManager NavigationManager
+
+<div class="appointment-view-card card shadow-sm p-4 my-3 max-w-2xl mx-auto" style="max-width: 650px;">
+    @if (_isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary mb-3" role="status"></div>
+            <h5>Cargando información de tu cita...</h5>
+        </div>
+    }
+    else if (_appointment == null)
+    {
+        <div class="text-center py-4">
+            <div class="rounded-circle bg-warning-subtle text-warning d-inline-flex align-items-center justify-content-center mb-3"
+                 style="width: 56px; height: 56px;">
+                <i class="bi bi-calendar-x fs-2"></i>
+            </div>
+            <h4 class="fw-bold mb-2">No se encontró la cita</h4>
+            <p class="text-muted mb-4">
+                @(_errorMessage ?? "No encontramos una cita activa con el token proporcionado o tu sesión ha expirado.")
+            </p>
+
+            <div class="card bg-light p-3 mb-4 text-start">
+                <label class="form-label fw-bold small">¿Tienes un código o token de cita?</label>
+                <div class="input-group">
+                    <input type="text" class="form-control" @bind="_manualToken" placeholder="Pega tu token aquí..." />
+                    <button class="btn btn-primary" @onclick="LoadWithManualToken">Consultar</button>
+                </div>
+            </div>
+
+            <div class="d-grid gap-2">
+                <a class="btn btn-outline-primary" href="/portal/@ContextClinicSubdomain/verify">
+                    Reservar una cita
+                </a>
+                <a class="btn btn-outline-secondary" href="/portal/@ContextClinicSubdomain">
+                    Volver al inicio
+                </a>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="d-flex align-items-center justify-content-between mb-4 border-bottom pb-3">
+            <div>
+                <h4 class="fw-bold text-primary mb-0">Detalles de la Cita</h4>
+                <small class="text-muted">@_appointment.ClinicName</small>
+            </div>
+            <div>
+                <span class="badge @GetStatusBadgeClass(_appointment.Status) fs-6 px-3 py-2">
+                    @GetStatusText(_appointment.Status)
+                </span>
+            </div>
+        </div>
+
+        <div class="row g-3 mb-4">
+            <div class="col-12 col-md-6">
+                <label class="text-muted small text-uppercase fw-bold">Profesional</label>
+                <div class="fw-semibold fs-5">@_appointment.DoctorName</div>
+            </div>
+
+            <div class="col-12 col-md-6">
+                <label class="text-muted small text-uppercase fw-bold">Paciente</label>
+                <div class="fw-semibold fs-5">@_appointment.PatientName</div>
+            </div>
+
+            <div class="col-12 col-md-6">
+                <label class="text-muted small text-uppercase fw-bold">Fecha y Hora</label>
+                <div class="fw-semibold">
+                    <i class="bi bi-clock me-1 text-primary"></i>
+                    @_appointment.StartAt.ToString("dddd d 'de' MMMM, yyyy", new System.Globalization.CultureInfo("es-MX"))
+                </div>
+                <div class="text-muted">
+                    @_appointment.StartAt.ToString("HH:mm") - @_appointment.EndAt.ToString("HH:mm")
+                </div>
+            </div>
+
+            <div class="col-12 col-md-6">
+                <label class="text-muted small text-uppercase fw-bold">Tipo de Consulta</label>
+                <div>
+                    <span class="badge bg-light text-dark border">
+                        @GetTypeText(_appointment.Type)
+                    </span>
+                </div>
+            </div>
+
+            @if (!string.IsNullOrEmpty(_appointment.Notes))
+            {
+                <div class="col-12">
+                    <label class="text-muted small text-uppercase fw-bold">Notas</label>
+                    <div class="p-2 bg-light rounded border text-muted">@_appointment.Notes</div>
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(_appointment.CancellationReason))
+            {
+                <div class="col-12">
+                    <div class="alert alert-secondary mb-0">
+                        <strong>Motivo de cancelación:</strong> @_appointment.CancellationReason
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div class="d-flex flex-column flex-sm-row gap-2 border-top pt-3">
+            @if (_appointment.Status == AppointmentStatus.Scheduled || _appointment.Status == AppointmentStatus.Confirmed)
+            {
+                var currentToken = GetEffectiveToken();
+                <a class="btn btn-outline-danger" href="/portal/@ContextClinicSubdomain/cancel/@currentToken">
+                    <i class="bi bi-x-circle me-1"></i> Cancelar cita
+                </a>
+            }
+            <a class="btn btn-outline-secondary ms-auto" href="/portal/@ContextClinicSubdomain">
+                Volver al inicio
+            </a>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string ContextClinicSubdomain { get; set; } = "";
+    [Parameter] public string? Token { get; set; }
+
+    private PortalAppointmentView? _appointment;
+    private bool _isLoading = true;
+    private string? _errorMessage;
+    private string _manualToken = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        SessionState.ClinicSubdomain = ContextClinicSubdomain;
+        await LoadAppointmentAsync(GetEffectiveToken());
+    }
+
+    private string? GetEffectiveToken()
+    {
+        if (!string.IsNullOrWhiteSpace(Token))
+            return Token.Trim();
+
+        if (!string.IsNullOrWhiteSpace(SessionState.ManagementToken))
+            return SessionState.ManagementToken;
+
+        if (!string.IsNullOrWhiteSpace(SessionState.ConfirmationToken))
+            return SessionState.ConfirmationToken;
+
+        if (!string.IsNullOrWhiteSpace(SessionState.PortalToken))
+            return SessionState.PortalToken;
+
+        return null;
+    }
+
+    private async Task LoadAppointmentAsync(string? token)
+    {
+        _isLoading = true;
+        _errorMessage = null;
+
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            _isLoading = false;
+            _appointment = null;
+            return;
+        }
+
+        try
+        {
+            _appointment = await PortalService.GetAppointmentViewAsync(token);
+            if (_appointment == null)
+            {
+                _errorMessage = "No pudimos encontrar los datos de la cita con el token proporcionado.";
+            }
+            else
+            {
+                SessionState.CurrentAppointmentView = _appointment;
+                SessionState.ClinicName = _appointment.ClinicName;
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error al consultar la cita: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task LoadWithManualToken()
+    {
+        if (string.IsNullOrWhiteSpace(_manualToken)) return;
+        Token = _manualToken.Trim();
+        await LoadAppointmentAsync(Token);
+    }
+
+    private static string GetStatusBadgeClass(AppointmentStatus status) => status switch
+    {
+        AppointmentStatus.Scheduled => "bg-primary",
+        AppointmentStatus.Confirmed => "bg-success",
+        AppointmentStatus.CancelledByPatient or AppointmentStatus.CancelledByStaff => "bg-danger",
+        AppointmentStatus.NoShow => "bg-warning text-dark",
+        AppointmentStatus.Completed => "bg-info text-dark",
+        _ => "bg-secondary"
+    };
+
+    private static string GetStatusText(AppointmentStatus status) => status switch
+    {
+        AppointmentStatus.Scheduled => "Programada",
+        AppointmentStatus.Confirmed => "Confirmada",
+        AppointmentStatus.CancelledByPatient => "Cancelada por paciente",
+        AppointmentStatus.CancelledByStaff => "Cancelada por consultorio",
+        AppointmentStatus.NoShow => "No asistió",
+        AppointmentStatus.Completed => "Completada",
+        _ => status.ToString()
+    };
+
+    private static string GetTypeText(AppointmentType type) => type switch
+    {
+        AppointmentType.FirstVisit => "Primera vez",
+        AppointmentType.FollowUp => "Control / Seguimiento",
+        AppointmentType.Procedure => "Procedimiento",
+        AppointmentType.Telemedicine => "Telemedicina",
+        AppointmentType.Emergency => "Urgencia",
+        _ => type.ToString()
+    };
+}

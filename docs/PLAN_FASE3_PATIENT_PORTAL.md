@@ -24,12 +24,12 @@
 
 | Endpoint | Método | Descripción |
 |----------|--------|-------------|
-| `/api/patient-portal/clinics/{subdomain}/doctors` | GET | Listar doctores disponibles de una clínica (para selector en portal) |
-| `/api/patient-portal/clinics/{subdomain}/doctors/{doctorId}/slots` | GET | Slots disponibles en rango (respeta horizonte 45d, festivos, vacaciones) |
-| `/api/patient-portal/verify-email` | POST | Enviar OTP 6 dígitos al correo del paciente (purpose: `EmailVerification`) |
-| `/api/patient-portal/validate-otp` | POST | Validar OTP y crear `PatientToken` tipo `PortalAccess` (single-use, expirable) |
-| `/api/patient-portal/book` | POST | Reservar cita usando `PatientToken` (PortalAccess) + datos cita |
-| `/api/patient-portal/confirm/{token}` | GET | Confirmar cita vía token `AppointmentConfirmation` (enlace email) |
+| `/api/patient-portal/clinics/{subdomain}/doctors` | GET | Listar doctores disponibles de una clínica (para selector en portal) ✅ |
+| `/api/patient-portal/clinics/{subdomain}/doctors/{doctorId}/slots` | GET | Slots disponibles en rango (respeta horizonte 45d, festivos, vacaciones) ✅ |
+| `/api/patient-portal/verify-email` | POST | Enviar OTP 6 dígitos al correo del paciente (purpose: `EmailVerification`) ✅ |
+| `/api/patient-portal/validate-otp` | POST | Validar OTP y crear `PatientToken` tipo `PortalAccess` (single-use, expirable) ✅ |
+| `/api/patient-portal/book` | POST | Reservar cita usando `PatientToken` (PortalAccess) + datos cita ✅ |
+| `/api/patient-portal/confirm/{token}` | GET | Confirmar cita vía token `AppointmentConfirmation` (enlace email) ✅ |
 | `/api/patient-portal/appointments/{token}` | GET | Ver cita del paciente (solo lectura, usando token) |
 
 ### 2.2 Servicios de negocio

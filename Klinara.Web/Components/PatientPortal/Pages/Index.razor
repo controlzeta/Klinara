@@ -1,44 +1,67 @@
-@page "/portal/@ContextClinicSubdomain"
+@page "/portal/{ContextClinicSubdomain}"
+@layout PatientPortalLayout
 @rendermode InteractiveServer
-@using Microsoft.AspNetCore.Components.Authorization
-@using Klinara.Web
-@using Klinara.Web.Services
-@using Klinara.Web.Components.Account
-<PatientPortalLayout ContextClinicSubdomain="@ContextClinicSubdomain"
-                    ContextPatientName="PatientName"
-                    ContextPatientEmail="PatientEmail"
-                    ContextPageTitle="Klinara - Consultorio">
+@inject PatientPortalSessionState SessionState
+@inject NavigationManager NavigationManager
 
-    <div class="welcome-section">
-        <h2>Bienvenido a Klinara</h2>
-        <p>Tu consultorio dental de confianza</p>
+<div class="welcome-section card shadow-sm p-4 p-md-5 my-3">
+    <div class="text-center mb-4">
+        <h1 class="display-6 fw-bold text-primary mb-2">Bienvenido a Klinara</h1>
+        <p class="text-muted lead">Portal de reservas y atención para pacientes</p>
+    </div>
 
-        <div class="actions">
-            <a class="btn btn-primary w-100 mb-2" href="/portal/@ContextClinicSubdomain/verify">
-                <span class="bi bi-lock-fill"></span>
-                <span>Reservar cita</span>
-            </a>
-            <a class="btn btn-secondary w-100 mb-2" href="/portal/@ContextClinicSubdomain/doctors">
-                <span class="bi bi-person-fill"></span>
-                <span>Ver doctores</span>
-            </a>
+    <div class="row g-4 justify-content-center my-2">
+        <div class="col-12 col-md-6">
+            <div class="card h-100 border-primary shadow-sm text-center p-3">
+                <div class="card-body">
+                    <div class="rounded-circle bg-primary-subtle text-primary mx-auto mb-3 d-flex align-items-center justify-content-center"
+                         style="width: 56px; height: 56px;">
+                        <i class="bi bi-calendar-plus fs-3"></i>
+                    </div>
+                    <h5 class="card-title fw-bold">Nueva Reserva</h5>
+                    <p class="card-text text-muted">Agenda tu cita en línea fácilmente verificando tu correo electrónico.</p>
+                    <a class="btn btn-primary w-100 mt-2" href="/portal/@ContextClinicSubdomain/verify">
+                        Comenzar reserva
+                    </a>
+                </div>
+            </div>
         </div>
 
-        <div class="info-box">
-            <h3>Para reservar:</h3>
-            <ul>
-                <li>Ingresa tu correo electrónico</li>
-                <li>Verifica tu identidad con código de 6 dígitos</li>
-                <li>Selecciona doctor y horario disponible</li>
-                <li>Confirma tu cita por correo</li>
-            </ul>
+        <div class="col-12 col-md-6">
+            <div class="card h-100 border-secondary shadow-sm text-center p-3">
+                <div class="card-body">
+                    <div class="rounded-circle bg-secondary-subtle text-secondary mx-auto mb-3 d-flex align-items-center justify-content-center"
+                         style="width: 56px; height: 56px;">
+                        <i class="bi bi-calendar-check fs-3"></i>
+                    </div>
+                    <h5 class="card-title fw-bold">Consultar mi cita</h5>
+                    <p class="card-text text-muted">Revisa el estado de tu cita programada o cancela con tu enlace de gestión.</p>
+                    <a class="btn btn-outline-secondary w-100 mt-2" href="/portal/@ContextClinicSubdomain/appointment">
+                        Ver mi cita
+                    </a>
+                </div>
+            </div>
         </div>
     </div>
 
-</PatientPortalLayout>
+    <div class="alert alert-light border mt-4">
+        <h6 class="fw-bold mb-2"><i class="bi bi-info-circle me-1 text-primary"></i> Información importante:</h6>
+        <ul class="mb-0 small text-muted">
+            <li>Puedes reservar con un mínimo de <strong>24 horas de anticipación</strong> y hasta <strong>45 días</strong> hacia adelante.</li>
+            <li>Recibirás un código de 6 dígitos por correo para validar tu identidad sin necesidad de contraseña.</li>
+            <li>Las cancelaciones con menos de 24 horas de anticipación acumulan una marca de impuntualidad.</li>
+        </ul>
+    </div>
+</div>
 
 @code {
     [Parameter] public string ContextClinicSubdomain { get; set; } = "";
-    [SupplyParameterFromQuery] public string PatientName { get; set; } = "";
-    [SupplyParameterFromQuery] public string PatientEmail { get; set; } = "";
+
+    protected override void OnParametersSet()
+    {
+        if (!string.IsNullOrEmpty(ContextClinicSubdomain))
+        {
+            SessionState.ClinicSubdomain = ContextClinicSubdomain;
+        }
+    }
 }
