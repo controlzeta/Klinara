@@ -889,13 +889,13 @@ namespace Klinara.Web.Migrations
                     b.HasOne("Klinara.Web.Data.Clinic", "Clinic")
                         .WithMany()
                         .HasForeignKey("ClinicId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.HasOne("Klinara.Web.Data.Patient", "Patient")
                         .WithMany("Tokens")
                         .HasForeignKey("PatientId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.Navigation("Appointment");
@@ -915,7 +915,7 @@ namespace Klinara.Web.Migrations
                     b.HasOne("Klinara.Web.Data.Clinic", "Clinic")
                         .WithMany()
                         .HasForeignKey("ClinicId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.HasOne("Klinara.Web.Data.ApplicationUser", "Doctor")

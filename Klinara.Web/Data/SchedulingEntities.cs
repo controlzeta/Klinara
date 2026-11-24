@@ -330,6 +330,12 @@ public class PatientToken
     public virtual Patient Patient { get; set; } = null!;
 
     [Required]
+    public Guid ClinicId { get; set; }
+
+    [ForeignKey(nameof(ClinicId))]
+    public virtual Clinic Clinic { get; set; } = null!;
+
+    [Required]
     public PatientTokenType Type { get; set; }
 
     [Required]

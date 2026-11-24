@@ -143,20 +143,25 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         });
 
         // PatientToken
-                builder.Entity<PatientToken>(entity =>
-                {
-                    entity.HasIndex(e => e.PatientId);
-                    entity.HasIndex(e => e.Token).IsUnique();
-                    entity.HasIndex(e => e.ExpiresAt);
-                    entity.HasIndex(e => e.AppointmentId);
-                    entity.HasOne(e => e.Patient)
-                        .WithMany(p => p.Tokens)
-                        .HasForeignKey(e => e.PatientId)
-                        .OnDelete(DeleteBehavior.NoAction);
-                    entity.HasOne(e => e.Appointment)
-                        .WithMany()
-                        .HasForeignKey(e => e.AppointmentId)
-                        .OnDelete(DeleteBehavior.SetNull);
-                });
+                        builder.Entity<PatientToken>(entity =>
+                        {
+                            entity.HasIndex(e => e.PatientId);
+                            entity.HasIndex(e => e.ClinicId);
+                            entity.HasIndex(e => e.Token).IsUnique();
+                            entity.HasIndex(e => e.ExpiresAt);
+                            entity.HasIndex(e => e.AppointmentId);
+                            entity.HasOne(e => e.Patient)
+                                .WithMany(p => p.Tokens)
+                                .HasForeignKey(e => e.PatientId)
+                                .OnDelete(DeleteBehavior.NoAction);
+                            entity.HasOne(e => e.Clinic)
+                                .WithMany()
+                                .HasForeignKey(e => e.ClinicId)
+                                .OnDelete(DeleteBehavior.NoAction);
+                            entity.HasOne(e => e.Appointment)
+                                .WithMany()
+                                .HasForeignKey(e => e.AppointmentId)
+                                .OnDelete(DeleteBehavior.SetNull);
+                        });
     }
 }

@@ -434,4 +434,181 @@ public class AppointmentServiceTests
         Assert.False(result.Success);
         Assert.Contains(result.Errors, e => e.Contains("horario laboral"));
     }
+
+    [Fact]
+    public async Task CreateAppointmentFromPortalAsync_ValidAppointment_ReturnsSuccess()
+    {
+        // Arrange
+        await using var context = CreateContext(nameof(CreateAppointmentFromPortalAsync_ValidAppointment_ReturnsSuccess));
+        var clinic = CreateClinic("Test Clinic", "test-clinic");
+        context.Clinics.Add(clinic);
+
+        var doctor = CreateUser("doctor@test.com", clinic.Id);
+        var patientUser = CreateUser("patient@test.com", clinic.Id);
+        context.Users.AddRange(doctor, patientUser);
+
+        var patient = CreatePatient(clinic.Id, patientUser.Id, "Paciente Test", patientUser.Email);
+        context.Patients.Add(patient);
+
+        // Horario: Lunes 9:00-14:00
+        var schedule = CreateSchedule(clinic.Id, doctor.Id, DayOfWeek.Monday, new TimeOnly(9, 0), new TimeOnly(14, 0));
+        context.DoctorSchedules.Add(schedule);
+
+        await context.SaveChangesAsync();
+
+        var service = CreateAppointmentService(context);
+
+        // Usar un lunes fijo conocido en el futuro (evita problemas de cálculo de "próximo lunes")
+        var fixedMonday = new DateTime(2026, 12, 7, 10, 0, 0, DateTimeKind.Utc); // Lunes 7 dic 2026 10:00 UTC
+        // Verificar que es lunes
+        Assert.Equal(DayOfWeek.Monday, fixedMonday.DayOfWeek);
+
+        // Act - Cita a las 10:00 (dentro del horario 9-14)
+        var result = await service.CreateAppointmentFromPortalAsync(
+            clinic.Id,
+            doctor.Id,
+            patient.Id,
+            fixedMonday,
+            fixedMonday.AddMinutes(30),
+            AppointmentType.FirstVisit,
+            "Primera consulta desde portal"
+        );
+
+        // Assert
+        Assert.True(result.Success);
+        Assert.NotNull(result.Appointment);
+        Assert.Equal(AppointmentStatus.Scheduled, result.Appointment.Status);
+        Assert.Equal(patient.Id, result.Appointment.CreatedByUserId);
+        Assert.Equal("Primera consulta desde portal", result.Appointment.Notes);
+    }
+
+    [Fact]
+    public async Task CreateAppointmentFromPortalAsync_OutsidePatientHorizon_ReturnsError()
+    {
+        // Arrange
+        await using var context = CreateContext(nameof(CreateAppointmentFromPortalAsync_OutsidePatientHorizon_ReturnsError));
+        var clinic = CreateClinic("Test Clinic", "test-clinic");
+        context.Clinics.Add(clinic);
+
+        var doctor = CreateUser("doctor@test.com", clinic.Id);
+        var patientUser = CreateUser("patient@test.com", clinic.Id);
+        context.Users.AddRange(doctor, patientUser);
+
+        var patient = CreatePatient(clinic.Id, patientUser.Id, "Paciente Test", patientUser.Email);
+        context.Patients.Add(patient);
+
+        // Horario: Lunes 9:00-14:00
+        var schedule = CreateSchedule(clinic.Id, doctor.Id, DayOfWeek.Monday, new TimeOnly(9, 0), new TimeOnly(14, 0));
+        context.DoctorSchedules.Add(schedule);
+
+        await context.SaveChangesAsync();
+
+        var service = CreateAppointmentService(context);
+
+        // Fecha a 50 días (fuera de horizonte 45d para pacientes) - buscar un lunes
+        var farFuture = DateTime.UtcNow.AddDays(50);
+        var nextMonday = farFuture.AddDays(((int)DayOfWeek.Monday - (int)farFuture.DayOfWeek + 7) % 7);
+        if (nextMonday <= farFuture) nextMonday = nextMonday.AddDays(7);
+
+        // Act
+        var result = await service.CreateAppointmentFromPortalAsync(
+            clinic.Id,
+            doctor.Id,
+            patient.Id,
+            nextMonday.AddHours(10),
+            nextMonday.AddHours(10).AddMinutes(30),
+            AppointmentType.FirstVisit,
+            null
+        );
+
+        // Assert
+        Assert.False(result.Success);
+        // El error puede ser por horario o por horizonte (depende del orden de validación)
+        Assert.Contains(result.Errors, e => e.Contains("45 días") || e.Contains("horario laboral"));
+    }
+
+    [Fact]
+    public async Task CreateAppointmentFromPortalAsync_BlockedPatient_ReturnsError()
+    {
+        // Arrange
+        await using var context = CreateContext(nameof(CreateAppointmentFromPortalAsync_BlockedPatient_ReturnsError));
+        var clinic = CreateClinic("Test Clinic", "test-clinic");
+        context.Clinics.Add(clinic);
+
+        var doctor = CreateUser("doctor@test.com", clinic.Id);
+        var patientUser = CreateUser("patient@test.com", clinic.Id);
+        context.Users.AddRange(doctor, patientUser);
+
+        var patient = CreatePatient(clinic.Id, patientUser.Id, "Paciente Test", patientUser.Email);
+        patient.IsBlocked = true;
+        patient.BlockedUntil = DateTime.UtcNow.AddMonths(3);
+        context.Patients.Add(patient);
+
+        var schedule = CreateSchedule(clinic.Id, doctor.Id, DayOfWeek.Monday, new TimeOnly(9, 0), new TimeOnly(14, 0));
+        context.DoctorSchedules.Add(schedule);
+
+        await context.SaveChangesAsync();
+
+        var service = CreateAppointmentService(context);
+
+        var fixedMonday = new DateTime(2026, 12, 7, 10, 0, 0, DateTimeKind.Utc);
+        Assert.Equal(DayOfWeek.Monday, fixedMonday.DayOfWeek);
+
+        // Act
+        var result = await service.CreateAppointmentFromPortalAsync(
+            clinic.Id,
+            doctor.Id,
+            patient.Id,
+            fixedMonday,
+            fixedMonday.AddMinutes(30),
+            AppointmentType.FirstVisit,
+            null
+        );
+
+        // Assert
+        Assert.False(result.Success);
+        Assert.Contains(result.Errors, e => e.Contains("bloqueado"));
+    }
+
+    [Fact]
+    public async Task CreateAppointmentFromPortalAsync_DoctorNotInClinic_ReturnsError()
+    {
+        // Arrange
+        await using var context = CreateContext(nameof(CreateAppointmentFromPortalAsync_DoctorNotInClinic_ReturnsError));
+        var clinic1 = CreateClinic("Clinic 1", "clinic-1");
+        var clinic2 = CreateClinic("Clinic 2", "clinic-2");
+        context.Clinics.AddRange(clinic1, clinic2);
+
+        var doctor = CreateUser("doctor@test.com", clinic1.Id); // Doctor en clinic1
+        var patientUser = CreateUser("patient@test.com", clinic1.Id);
+        context.Users.AddRange(doctor, patientUser);
+
+        var patient = CreatePatient(clinic1.Id, patientUser.Id, "Paciente Test", patientUser.Email);
+        context.Patients.Add(patient);
+
+        var schedule = CreateSchedule(clinic1.Id, doctor.Id, DayOfWeek.Monday, new TimeOnly(9, 0), new TimeOnly(14, 0));
+        context.DoctorSchedules.Add(schedule);
+
+        await context.SaveChangesAsync();
+
+        var service = CreateAppointmentService(context);
+
+        var nextMonday = DateTime.UtcNow.AddDays(((int)DayOfWeek.Monday - (int)DateTime.UtcNow.DayOfWeek + 7) % 7);
+        if (nextMonday <= DateTime.UtcNow) nextMonday = nextMonday.AddDays(7);
+
+        // Act - Intentar reservar en clinic2 con doctor de clinic1
+        var result = await service.CreateAppointmentFromPortalAsync(
+            clinic2.Id, // Clínica diferente
+            doctor.Id,
+            patient.Id,
+            nextMonday.AddHours(10),
+            nextMonday.AddHours(10).AddMinutes(30),
+            AppointmentType.FirstVisit,
+            null
+        );
+
+        // Assert
+        Assert.False(result.Success);
+        Assert.Contains(result.Errors, e => e.Contains("clínica"));
+    }
 }

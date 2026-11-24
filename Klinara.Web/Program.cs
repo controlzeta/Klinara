@@ -5,6 +5,7 @@ using Klinara.Web.Authorization;
 using Klinara.Web.Components;
 using Klinara.Web.Components.Account;
 using Klinara.Web.Data;
+using Klinara.Web.Middleware;
 using Klinara.Web.Services;
 using Serilog;
 using Serilog.Enrichers.CorrelationId;
@@ -78,6 +79,10 @@ builder.Services.AddScoped<OtpEmailSender>();
 builder.Services.AddScoped<IScheduleService, ScheduleService>();
 builder.Services.AddScoped<IAppointmentService, AppointmentService>();
 
+// Patient Portal services
+builder.Services.AddScoped<IPatientTokenService, PatientTokenService>();
+builder.Services.AddScoped<IPatientPortalService, PatientPortalService>();
+
 // Slot Generator (background job)
 builder.Services.AddSlotGenerator(builder.Configuration);
 
@@ -127,6 +132,9 @@ app.UseSerilogRequestLogging(options =>
     };
     options.GetLevel = (httpContext, elapsed, ex) => ex != null ? Serilog.Events.LogEventLevel.Error : Serilog.Events.LogEventLevel.Information;
 });
+
+// Clinic subdomain middleware (for patient portal)
+app.UseClinicSubdomain();
 
 app.UseAntiforgery();
 

@@ -11,6 +11,7 @@ namespace Klinara.Web.Services;
 public interface IAppointmentService
 {
     Task<AppointmentResult> CreateAppointmentAsync(Appointment appointment, bool isPatientBooking = false);
+    Task<AppointmentResult> CreateAppointmentFromPortalAsync(Guid clinicId, Guid doctorId, Guid patientId, DateTime startAt, DateTime endAt, AppointmentType type, string? notes);
     Task<AppointmentResult> UpdateAppointmentAsync(Appointment appointment, bool isPatientBooking = false);
     Task<AppointmentResult> CancelAppointmentAsync(Guid appointmentId, Guid cancelledByUserId, string reason, bool isPatientCancellation = false);
     Task<AppointmentResult> MarkNoShowAsync(Guid appointmentId, Guid markedByUserId);
@@ -74,6 +75,58 @@ public class AppointmentService : IAppointmentService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creando cita");
+            result.Success = false;
+            result.Errors.Add("Error interno al crear la cita");
+        }
+
+        return result;
+    }
+
+    public async Task<AppointmentResult> CreateAppointmentFromPortalAsync(Guid clinicId, Guid doctorId, Guid patientId, DateTime startAt, DateTime endAt, AppointmentType type, string? notes)
+    {
+        var result = new AppointmentResult();
+
+        var appointment = new Appointment
+        {
+            ClinicId = clinicId,
+            DoctorId = doctorId,
+            PatientId = patientId,
+            StartAt = startAt,
+            EndAt = endAt,
+            Type = type,
+            Notes = notes,
+            CreatedByUserId = patientId, // El paciente es quien crea
+            Status = AppointmentStatus.Scheduled
+        };
+
+        // Validar usando ScheduleService (isPatientBooking = true para aplicar horizonte 45d, etc.)
+        var validation = await _scheduleService.ValidateAppointmentAsync(appointment, isPatientBooking: true);
+        if (!validation.IsValid)
+        {
+            result.Success = false;
+            result.Errors = validation.Errors;
+            return result;
+        }
+
+        try
+        {
+            appointment.Id = Guid.NewGuid();
+            appointment.CreatedAt = DateTime.UtcNow;
+            appointment.Status = AppointmentStatus.Scheduled;
+
+            _context.Appointments.Add(appointment);
+            await _context.SaveChangesAsync();
+
+            // Generar TimeSlot para esta cita
+            await GenerateTimeSlotForAppointmentAsync(appointment);
+
+            result.Success = true;
+            result.Appointment = appointment;
+            _logger.LogInformation("Cita creada desde portal: {AppointmentId} para Doctor {DoctorId} Paciente {PatientId}", appointment.Id, appointment.DoctorId, appointment.PatientId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creando cita desde portal");
             result.Success = false;
             result.Errors.Add("Error interno al crear la cita");
         }
