@@ -23,10 +23,23 @@ metadata:
 - **Design system variables in CSS**: `--primary, --surface, --foreground, --muted-foreground, --accent, --border`. All new styles must use these variables.
 - **Subdomain-to-ClinicId mapping**: ClinicSubdomainMiddleware extracts subdomain from URL path and stores ClinicId in HttpContext.Items for downstream services.
 - **No API keys, tokens, passwords, or credentials in summaries**: Replace any that appear with `[REDACTED]`.
+- **OTP generation must use only `EmailVerification` purpose** — do not generate a `Login` OTP first and then an `EmailVerification` OTP; a single `EmailVerification` code is emitted per portal verification request. The test `SendVerificationEmailAsync_GeneratesOnlyEmailVerificationOtp` validates this guardrail.
+- Do **not** add a unique index on `{ClinicId, Type, PatientId}`: token history persists after use, and patients must be able to receive multiple tokens of each type over time. The existing unique index on the random token value is appropriate; enforce active-token policy explicitly only if product requirements demand it.
+- **Render mode**: Declare `@rendermode InteractiveServer` on any Blazor page that uses interactive components (`@onclick`, `@bind`, etc.). Pages that only use static navigation can omit it. Declaring it globally in `Routes.razor` or `App.razor` can open too many circuits and degrade performance.
+- **DoctorSelector/SlotPicker backend integration**: These components need `IScheduleService` injected via DI. `DoctorSelector.LoadSchedule()` should call `_slotService.GenerateSlotsForPeriodAsync(clinicId, doctorId, startDate, endDate)` to populate slots for the UI. `SlotPicker.ConfirmSelection()` should navigate to a confirmation or create-appointment page using `NavigationManager.NavigateTo()` with the slot and doctor IDs.
+- **User preference: deliverables should be concise and direct, matching the weight of the ask without filler or restatements.** No «Great question,» no restating the request, no re-summarizing what already was said. Plain claims over adjectives; when unsure, say so plainly.
 
 ## Procedures
 
 ### SendVerificationEmail Flow
+1. Find clinic by subdomain: 
+2. Find or create patient by email in that clinic
+3. Check if patient is blocked ()
+4. Find or create ApplicationUser for OTP delivery
+5. Generate OTP via  — **single purpose only**, do NOT call  (that method only supports  and is intended for identity login, not portal verification). The test  validates this guardrail: it must pass with exactly one  OTP emitted.
+6. Send OTP email via 
+7. Return 
+**Pitfall**: Mixing  and  in the same service. The  only supports . Use one purpose consistently throughout. The portal verification flow must emit exactly one  OTP — if the new test fails, remove any  call.
 
 1. Find clinic by subdomain: `var clinic = await _context.Clinics.FirstOrDefaultAsync(c => c.Subdomain == clinicSubdomain && c.IsActive);`
 2. Find or create patient by email in that clinic

@@ -21,11 +21,9 @@
             </div>
         }
     </div>
-    
     @if (AvailableSlots.Count == 0) {
         <p class="text-muted">No hay slots disponibles</p>
     }
-    
     <div class="slot-footer">
         <button class="btn btn-primary w-100" @onclick="ConfirmSelection">
             <span class="bi bi-check-circle-fill"></span> Confirmar selección
@@ -36,17 +34,22 @@
 @code {
     [Parameter] public List<TimeSlot> AvailableSlots { get; set; } = new();
     [Parameter] public string? ClinicName { get; set; }
+    [Parameter] public string? ContextClinicSubdomain { get; set; }
+    
+    [Inject] IScheduleService _scheduleService { get; set; } = null!;
+    [Inject] NavigationManager NavigationManager { get; set; } = null!;
     
     private TimeSlot? SelectedSlot { get; set; }
+    private DoctorAvailabilityDto? SelectedDoctor { get; set; }
 
-    private void SelectSlot(TimeSlot slot)
-    {
+    private void SelectSlot(TimeSlot slot) {
         SelectedSlot = slot;
     }
 
-    private void ConfirmSelection()
-    {
+    private async Task ConfirmSelection() {
         if (SelectedSlot == null) return;
-        // TODO: Navegar a confirmación o crear cita
+        
+        // Navigate to confirmation page with slot details
+        NavigationManager.NavigateTo($"/portal/{ContextClinicSubdomain}/confirm?slot={SelectedSlot.StartAt:yyyy-MM-ddTHH:mm}&doctor={SelectedDoctor?.DoctorId}");
     }
 }

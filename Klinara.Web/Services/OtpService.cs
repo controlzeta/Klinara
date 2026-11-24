@@ -36,8 +36,7 @@ public class OtpService : IOtpService
         if (string.IsNullOrWhiteSpace(code) || code.Length != 6)
             return false;
 
-        var fullToken = code.PadRight(32, '0'); // Reconstruir token aproximado (simplificado)
-        return await _userManager.VerifyUserTokenAsync(user, TokenOptions.DefaultEmailProvider, purpose, fullToken);
+        return await _userManager.VerifyUserTokenAsync(user, TokenOptions.DefaultEmailProvider, purpose, code);
     }
 
     public async Task InvalidateOtpAsync(ApplicationUser user, string purpose)

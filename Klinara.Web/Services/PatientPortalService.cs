@@ -105,11 +105,7 @@ public class PatientPortalService : IPatientPortalService
                 _logger.LogInformation("Usuario portal creado: {UserId} para email {Email}", portalUser.Id, email);
             }
 
-            // Generar y enviar OTP para verificación de email
-            var otp = await _otpEmailSender.SendLoginOtpAsync(portalUser); // Usa purpose LOGIN, pero para portal usaremos EmailVerification
-            // NOTA: En producción, OtpEmailSender debería tener método específico para EmailVerification
-
-            // Por ahora, usamos el OtpService directamente con purpose EmailVerification
+            // Generar y enviar un único OTP con el propósito de verificación de email
             var otpCode = await _otpService.GenerateOtpAsync(portalUser, OtpPurposes.EmailVerification);
 
             // Enviar email real (SmtpEmailSender en prod, LoggingEmailSender en dev)

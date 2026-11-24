@@ -83,6 +83,9 @@ builder.Services.AddScoped<IAppointmentService, AppointmentService>();
 builder.Services.AddScoped<IPatientTokenService, PatientTokenService>();
 builder.Services.AddScoped<IPatientPortalService, PatientPortalService>();
 
+// Enable controllers and API routes
+builder.Services.AddControllers();
+
 // Slot Generator (background job)
 builder.Services.AddSlotGenerator(builder.Configuration);
 

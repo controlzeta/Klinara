@@ -200,6 +200,32 @@ public class PatientPortalServiceTests
     }
 
     [Fact]
+    public async Task SendVerificationEmailAsync_GeneratesOnlyEmailVerificationOtp()
+    {
+        await using var context = CreateContext(nameof(SendVerificationEmailAsync_GeneratesOnlyEmailVerificationOtp));
+        var clinic = CreateClinic("Test Clinic", "test-clinic");
+        context.Clinics.Add(clinic);
+        await context.SaveChangesAsync();
+
+        var userManager = CreateMockUserManager(context);
+        var service = CreatePortalService(
+            context,
+            CreateTestConfiguration(),
+            new Mock<IEmailSender<ApplicationUser>>().Object,
+            userManager);
+
+        var result = await service.SendVerificationEmailAsync("patient@test.com", "test-clinic");
+
+        Assert.True(result.Success);
+        userManager.Verify(manager => manager.GenerateUserTokenAsync(
+                It.IsAny<ApplicationUser>(), TokenOptions.DefaultEmailProvider, OtpPurposes.EmailVerification),
+            Times.Once);
+        userManager.Verify(manager => manager.GenerateUserTokenAsync(
+                It.IsAny<ApplicationUser>(), TokenOptions.DefaultEmailProvider, OtpPurposes.Login),
+            Times.Never);
+    }
+
+    [Fact]
     public async Task SendVerificationEmailAsync_ExistingPatient_ReusesPatient()
     {
         // Arrange

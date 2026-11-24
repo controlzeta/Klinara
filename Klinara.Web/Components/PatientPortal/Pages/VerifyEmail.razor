@@ -2,6 +2,7 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @using Klinara.Web
 @using Klinara.Web.Services
+@rendermode InteractiveServer
 
 <div class="verify-section p-4">
     <h2 class="k-page-heading mb-3">
@@ -10,43 +11,117 @@
             <strong>Verificar correo</strong>
         </span>
     </h2>
-    
-    <div class="alert alert-info">
-        <p>Hemos enviado un código de verificación de 6 dígitos a tu correo.</p>
-    </div>
-    
-    @if (!codeValidated) {
+
+    @if (_sending) {
+        <div class="alert alert-info">
+            <p>Enviando código de verificación...</p>
+        </div>
+    }
+    else if (_errorMessage != null) {
+        <div class="alert alert-danger">
+            <p>@_errorMessage</p>
+        </div>
+    }
+    else if (_otpSent) {
+        <div class="alert alert-success">
+            <p>Hemos enviado un código de verificación de 6 dígitos a tu correo.</p>
+            <p>Introduce el código que recibiste.</p>
+        </div>
+    }
+    else {
+        <div class="alert alert-info">
+            <p>Introduce tu correo electrónico y haz clic en "Enviar código" para recibir un código de verificación.</p>
+        </div>
+    }
+
+    @if (!_otpSent && _errorMessage == null) {
+        <div class="mb-3">
+            <label class="form-label">Correo electrónico</label>
+            <input type="email" @bind="_email" class="form-control" maxlength="254" />
+        </div>
+        <button class="btn btn-primary w-100" @onclick="_SendOtp">Enviar código</button>
+    }
+    else if (_otpSent) {
         <div class="mb-3">
             <label class="form-label">Código de 6 dígitos</label>
-            <input type="text" @bind="otpCode" class="form-control" maxlength="6" />
+            <input type="text" @bind="_otpCode" class="form-control" maxlength="6" />
         </div>
-        <button class="btn btn-primary w-100" @onclick="ValidateCode">
-            <span class="bi bi-check-circle-fill"></span> Validar código
-        </button>
-    } else {
-        <div class="alert alert-success">
-            <p>Código verificado correctamente.</p>
-            <p class="mt-2">Serás redirigido a la selección de horarios...</p>
-            <a class="btn btn-secondary mt-2" href="/portal/@ContextClinicSubdomain/booking">
-                <span class="bi bi-arrow-right-square-fill"></span> Ver horarios
-            </a>
-        </div>
+        <button class="btn btn-primary w-100" @onclick="_ValidateCode">Validar código</button>
+        <button class="btn btn-secondary w-100 mt-2" @onclick="_ResendOtp">Reenviar código</button>
     }
 </div>
 
 @code {
     [Parameter] public string ContextClinicSubdomain { get; set; } = "";
-    
-    private string otpCode = "";
-    private bool codeValidated = false;
 
-    private async Task ValidateCode()
-    {
-        if (otpCode.Length != 6)
-        {
+    // State
+    private string _email = "";
+    private string _otpCode = "";
+    private bool _otpSent = false;
+    private string? _errorMessage;
+    private bool _sending = false;
+
+    // DI
+    [Inject] private IPatientPortalService _portalService { get; set; } = null!;
+    [Inject] private NavigationManager _navManager { get; set; } = null!;
+
+    protected override void OnInitialized() {
+        _otpSent = false;
+        _errorMessage = null;
+    }
+
+    private async Task _SendOtp() {
+        if (string.IsNullOrWhiteSpace(_email)) {
+            _errorMessage = "Introduce un correo electrónico";
             return;
         }
-        
-        codeValidated = true;
+
+        _sending = true;
+        try {
+            var result = await _portalService.SendVerificationEmailAsync(_email, ContextClinicSubdomain);
+            if (result.Success) {
+                _otpSent = true;
+            }
+            else {
+                _errorMessage = result.Error ?? "Error desconocido";
+            }
+        }
+        catch (Exception ex) {
+            _errorMessage = $"Error al enviar el código: {ex.Message}";
+        }
+        finally {
+            _sending = false;
+        }
     }
+
+    private async Task _ValidateCode() {
+        if (string.IsNullOrWhiteSpace(_otpCode) || _otpCode.Length != 6) {
+            _errorMessage = "El código debe tener 6 dígitos";
+            return;
+        }
+
+        _sending = true;
+        try {
+            var result = await _portalService.ValidateOtpAndCreatePortalTokenAsync(_email, _otpCode, ContextClinicSubdomain);
+            if (result.Success) {
+                _navManager.NavigateTo($"/portal/{ContextClinicSubdomain}/booking?token={result.PortalToken}", forceLoad: true);
+            }
+            else {
+                _errorMessage = result.Error ?? "Código inválido";
+            }
+        }
+        catch (Exception ex) {
+            _errorMessage = $"Error al validar el código: {ex.Message}";
+        }
+        finally {
+            _sending = false;
+        }
+    }
+
+    private async Task _ResendOtp() {
+        _otpSent = false;
+        _errorMessage = null;
+        await _SendOtp();
+    }
+}
 }
