@@ -1,0 +1,52 @@
+@page "/portal/@ContextClinicSubdomain/verify"
+@using Microsoft.AspNetCore.Components.Authorization
+@using Klinara.Web
+@using Klinara.Web.Services
+
+<div class="verify-section p-4">
+    <h2 class="k-page-heading mb-3">
+        <span>Klinara</span>
+        <span class="k-breadcrumbs">
+            <strong>Verificar correo</strong>
+        </span>
+    </h2>
+    
+    <div class="alert alert-info">
+        <p>Hemos enviado un código de verificación de 6 dígitos a tu correo.</p>
+    </div>
+    
+    @if (!codeValidated) {
+        <div class="mb-3">
+            <label class="form-label">Código de 6 dígitos</label>
+            <input type="text" @bind="otpCode" class="form-control" maxlength="6" />
+        </div>
+        <button class="btn btn-primary w-100" @onclick="ValidateCode">
+            <span class="bi bi-check-circle-fill"></span> Validar código
+        </button>
+    } else {
+        <div class="alert alert-success">
+            <p>Código verificado correctamente.</p>
+            <p class="mt-2">Serás redirigido a la selección de horarios...</p>
+            <a class="btn btn-secondary mt-2" href="/portal/@ContextClinicSubdomain/booking">
+                <span class="bi bi-arrow-right-square-fill"></span> Ver horarios
+            </a>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string ContextClinicSubdomain { get; set; } = "";
+    
+    private string otpCode = "";
+    private bool codeValidated = false;
+
+    private async Task ValidateCode()
+    {
+        if (otpCode.Length != 6)
+        {
+            return;
+        }
+        
+        codeValidated = true;
+    }
+}

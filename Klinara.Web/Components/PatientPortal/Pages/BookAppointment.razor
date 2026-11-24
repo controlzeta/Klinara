@@ -1,0 +1,75 @@
+@page "/portal/@ContextClinicSubdomain/booking"
+@using Microsoft.AspNetCore.Components.Authorization
+@using Klinara.Web
+@using Klinara.Web.Services
+
+<div class="booking-section p-4">
+    <h2 class="k-page-heading mb-3">
+        <span>Klinara</span>
+        <span class="k-breadcrumbs">
+            <strong>Reservar cita</strong>
+        </span>
+    </h2>
+    
+    @if (SelectedDoctor != null) {
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="card-title">@SelectedDoctor.DoctorName</h5>
+                <p class="card-text">Horario disponible: @SelectedDoctor.WeeklySchedule.Count horas semanales</p>
+            </div>
+        </div>
+        
+        <div class="d-grid gap-2 d-md-block">
+            <a class="btn btn-primary" href="#">
+                <span class="bi bi-calendar-check-fill"></span> Ver horarios disponibles
+            </a>
+        </div>
+    } else {
+        <p class="text-muted mb-3">Selecciona un doctor para ver los horarios disponibles.</p>
+        
+        <p>Selecciona un doctor de la lista para ver disponibilidad.</p>
+    }
+    
+    @if (SelectedSlot != null) {
+        <div class="alert alert-success mt-3">
+            <h4>Cita seleccionada</h4>
+            <p>
+                <strong>Horario:</strong> @SelectedSlot.StartAt.ToShortTimeString() - @SelectedSlot.EndAt.ToShortTimeString() 
+                (@SelectedSlot.StartAt.ToString("ddd"))
+            </p>
+            <div class="d-grid gap-2 d-md-block">
+                <button class="btn btn-primary" @onclick="ConfirmSelected">Confirmar cita</button>
+                <button class="btn btn-outline-secondary" @onclick="CancelSelection">Cancelar</button>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string ContextClinicSubdomain { get; set; } = "";
+    
+    private DoctorAvailabilityDto? SelectedDoctor { get; set; }
+    private List<DoctorAvailabilityDto> AvailableDoctors { get; set; } = new();
+    private List<TimeSlot> AvailableSlots { get; set; } = new();
+    private TimeSlot? SelectedSlot { get; set; }
+
+    private async Task DoctorSeleccionadoCambio(DoctorAvailabilityDto doctor)
+    {
+        SelectedDoctor = doctor;
+    }
+
+    private void SeleccionarSlot(TimeSlot slot)
+    {
+        SelectedSlot = slot;
+    }
+
+    private void ConfirmSelected()
+    {
+        // TODO: Confirmar cita
+    }
+
+    private void CancelSelection()
+    {
+        SelectedSlot = null;
+    }
+}

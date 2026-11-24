@@ -58,3 +58,4 @@ nunit-*.xml
 /obj_release
 /.vs/Klinara.slnx/config
 /.vs/Klinara.slnx/FileContentIndex
+/Klinara.Web/appsettings.json

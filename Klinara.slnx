@@ -1,4 +1,21 @@
 <Solution>
+  <Folder Name="/Elementos de la solución/" />
+  <Folder Name="/Elementos de la solución/Docs/">
+    <File Path="docs/API_ENDPOINTS.md" />
+    <File Path="docs/APPOINTMENT_SERVICE.md" />
+    <File Path="docs/CHANGELOG.md" />
+    <File Path="docs/IDENTITY_OTP.md" />
+    <File Path="docs/PLAN_FASE3_PATIENT_PORTAL.md" />
+    <File Path="docs/PLAN_PHASE1_EXECUTION.md" />
+    <File Path="docs/PLAN_UI_REDESIGN.md" />
+    <File Path="docs/PRD.md" />
+    <File Path="docs/PRD_COMPLIANCE.md" />
+    <File Path="docs/ROLES_POLICIES.md" />
+    <File Path="docs/SCHEDULE_SERVICE.md" />
+    <File Path="docs/SERILOG.md" />
+    <File Path="docs/SLOT_GENERATOR_SERVICE.md" />
+    <File Path="docs/UI_DESIGN_SYSTEM.md" />
+  </Folder>
   <Project Path="Klinara.Tests/Klinara.Tests.csproj" />
   <Project Path="Klinara.Web/Klinara.Web.csproj" />
 </Solution>

@@ -3,6 +3,58 @@
   "WorkspaceRootPath": "C:\\GitHub\\Klinara\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{C09FCF2B-F7FD-439D-AC81-C5C615BE9F65}|NewFolder1{C09FCF2B-F7FD-439D-AC81-C5C615BE9F65}|C:\\GitHub\\Klinara\\docs\\API_ENDPOINTS.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
+      "RelativeMoniker": "D:0:0:{C09FCF2B-F7FD-439D-AC81-C5C615BE9F65}|NewFolder1{C09FCF2B-F7FD-439D-AC81-C5C615BE9F65}|solutionrelative:docs\\API_ENDPOINTS.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{C09FCF2B-F7FD-439D-AC81-C5C615BE9F65}|NewFolder1{C09FCF2B-F7FD-439D-AC81-C5C615BE9F65}|C:\\GitHub\\Klinara\\docs\\APPOINTMENT_SERVICE.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
+      "RelativeMoniker": "D:0:0:{C09FCF2B-F7FD-439D-AC81-C5C615BE9F65}|NewFolder1{C09FCF2B-F7FD-439D-AC81-C5C615BE9F65}|solutionrelative:docs\\APPOINTMENT_SERVICE.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{C09FCF2B-F7FD-439D-AC81-C5C615BE9F65}|NewFolder1{C09FCF2B-F7FD-439D-AC81-C5C615BE9F65}|C:\\GitHub\\Klinara\\docs\\IDENTITY_OTP.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
+      "RelativeMoniker": "D:0:0:{C09FCF2B-F7FD-439D-AC81-C5C615BE9F65}|NewFolder1{C09FCF2B-F7FD-439D-AC81-C5C615BE9F65}|solutionrelative:docs\\IDENTITY_OTP.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{C09FCF2B-F7FD-439D-AC81-C5C615BE9F65}|NewFolder1{C09FCF2B-F7FD-439D-AC81-C5C615BE9F65}|C:\\GitHub\\Klinara\\docs\\PLAN_FASE3_PATIENT_PORTAL.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
+      "RelativeMoniker": "D:0:0:{C09FCF2B-F7FD-439D-AC81-C5C615BE9F65}|NewFolder1{C09FCF2B-F7FD-439D-AC81-C5C615BE9F65}|solutionrelative:docs\\PLAN_FASE3_PATIENT_PORTAL.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{C09FCF2B-F7FD-439D-AC81-C5C615BE9F65}|NewFolder1{C09FCF2B-F7FD-439D-AC81-C5C615BE9F65}|C:\\GitHub\\Klinara\\docs\\PLAN_PHASE1_EXECUTION.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
+      "RelativeMoniker": "D:0:0:{C09FCF2B-F7FD-439D-AC81-C5C615BE9F65}|NewFolder1{C09FCF2B-F7FD-439D-AC81-C5C615BE9F65}|solutionrelative:docs\\PLAN_PHASE1_EXECUTION.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{C09FCF2B-F7FD-439D-AC81-C5C615BE9F65}|NewFolder1{C09FCF2B-F7FD-439D-AC81-C5C615BE9F65}|C:\\GitHub\\Klinara\\docs\\PLAN_UI_REDESIGN.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
+      "RelativeMoniker": "D:0:0:{C09FCF2B-F7FD-439D-AC81-C5C615BE9F65}|NewFolder1{C09FCF2B-F7FD-439D-AC81-C5C615BE9F65}|solutionrelative:docs\\PLAN_UI_REDESIGN.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{C09FCF2B-F7FD-439D-AC81-C5C615BE9F65}|NewFolder1{C09FCF2B-F7FD-439D-AC81-C5C615BE9F65}|C:\\GitHub\\Klinara\\docs\\PRD.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
+      "RelativeMoniker": "D:0:0:{C09FCF2B-F7FD-439D-AC81-C5C615BE9F65}|NewFolder1{C09FCF2B-F7FD-439D-AC81-C5C615BE9F65}|solutionrelative:docs\\PRD.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{C09FCF2B-F7FD-439D-AC81-C5C615BE9F65}|NewFolder1{C09FCF2B-F7FD-439D-AC81-C5C615BE9F65}|C:\\GitHub\\Klinara\\docs\\PRD_COMPLIANCE.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
+      "RelativeMoniker": "D:0:0:{C09FCF2B-F7FD-439D-AC81-C5C615BE9F65}|NewFolder1{C09FCF2B-F7FD-439D-AC81-C5C615BE9F65}|solutionrelative:docs\\PRD_COMPLIANCE.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{C09FCF2B-F7FD-439D-AC81-C5C615BE9F65}|NewFolder1{C09FCF2B-F7FD-439D-AC81-C5C615BE9F65}|C:\\GitHub\\Klinara\\docs\\ROLES_POLICIES.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
+      "RelativeMoniker": "D:0:0:{C09FCF2B-F7FD-439D-AC81-C5C615BE9F65}|NewFolder1{C09FCF2B-F7FD-439D-AC81-C5C615BE9F65}|solutionrelative:docs\\ROLES_POLICIES.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{C09FCF2B-F7FD-439D-AC81-C5C615BE9F65}|NewFolder1{C09FCF2B-F7FD-439D-AC81-C5C615BE9F65}|C:\\GitHub\\Klinara\\docs\\SCHEDULE_SERVICE.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
+      "RelativeMoniker": "D:0:0:{C09FCF2B-F7FD-439D-AC81-C5C615BE9F65}|NewFolder1{C09FCF2B-F7FD-439D-AC81-C5C615BE9F65}|solutionrelative:docs\\SCHEDULE_SERVICE.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{C09FCF2B-F7FD-439D-AC81-C5C615BE9F65}|NewFolder1{C09FCF2B-F7FD-439D-AC81-C5C615BE9F65}|C:\\GitHub\\Klinara\\docs\\SERILOG.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
+      "RelativeMoniker": "D:0:0:{C09FCF2B-F7FD-439D-AC81-C5C615BE9F65}|NewFolder1{C09FCF2B-F7FD-439D-AC81-C5C615BE9F65}|solutionrelative:docs\\SERILOG.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{C09FCF2B-F7FD-439D-AC81-C5C615BE9F65}|NewFolder1{C09FCF2B-F7FD-439D-AC81-C5C615BE9F65}|C:\\GitHub\\Klinara\\docs\\SLOT_GENERATOR_SERVICE.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
+      "RelativeMoniker": "D:0:0:{C09FCF2B-F7FD-439D-AC81-C5C615BE9F65}|NewFolder1{C09FCF2B-F7FD-439D-AC81-C5C615BE9F65}|solutionrelative:docs\\SLOT_GENERATOR_SERVICE.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{C09FCF2B-F7FD-439D-AC81-C5C615BE9F65}|NewFolder1{C09FCF2B-F7FD-439D-AC81-C5C615BE9F65}|C:\\GitHub\\Klinara\\docs\\UI_DESIGN_SYSTEM.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
+      "RelativeMoniker": "D:0:0:{C09FCF2B-F7FD-439D-AC81-C5C615BE9F65}|NewFolder1{C09FCF2B-F7FD-439D-AC81-C5C615BE9F65}|solutionrelative:docs\\UI_DESIGN_SYSTEM.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{0833EF2C-D748-7B81-28C3-589070A6540C}|Klinara.Web\\Klinara.Web.csproj|c:\\github\\klinara\\klinara.web\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
       "RelativeMoniker": "D:0:0:{0833EF2C-D748-7B81-28C3-589070A6540C}|Klinara.Web\\Klinara.Web.csproj|solutionrelative:klinara.web\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
     }
@@ -19,12 +71,181 @@
             {
               "$type": "Document",
               "DocumentIndex": 0,
+              "Title": "API_ENDPOINTS.md",
+              "DocumentMoniker": "C:\\GitHub\\Klinara\\docs\\API_ENDPOINTS.md",
+              "RelativeDocumentMoniker": "docs\\API_ENDPOINTS.md",
+              "ToolTip": "C:\\GitHub\\Klinara\\docs\\API_ENDPOINTS.md",
+              "RelativeToolTip": "docs\\API_ENDPOINTS.md",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
+              "WhenOpened": "2026-11-24T16:36:53.652Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "APPOINTMENT_SERVICE.md",
+              "DocumentMoniker": "C:\\GitHub\\Klinara\\docs\\APPOINTMENT_SERVICE.md",
+              "RelativeDocumentMoniker": "docs\\APPOINTMENT_SERVICE.md",
+              "ToolTip": "C:\\GitHub\\Klinara\\docs\\APPOINTMENT_SERVICE.md",
+              "RelativeToolTip": "docs\\APPOINTMENT_SERVICE.md",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
+              "WhenOpened": "2026-11-24T16:36:51.838Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "IDENTITY_OTP.md",
+              "DocumentMoniker": "C:\\GitHub\\Klinara\\docs\\IDENTITY_OTP.md",
+              "RelativeDocumentMoniker": "docs\\IDENTITY_OTP.md",
+              "ToolTip": "C:\\GitHub\\Klinara\\docs\\IDENTITY_OTP.md",
+              "RelativeToolTip": "docs\\IDENTITY_OTP.md",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
+              "WhenOpened": "2026-11-24T16:36:50.766Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "PLAN_FASE3_PATIENT_PORTAL.md",
+              "DocumentMoniker": "C:\\GitHub\\Klinara\\docs\\PLAN_FASE3_PATIENT_PORTAL.md",
+              "RelativeDocumentMoniker": "docs\\PLAN_FASE3_PATIENT_PORTAL.md",
+              "ToolTip": "C:\\GitHub\\Klinara\\docs\\PLAN_FASE3_PATIENT_PORTAL.md",
+              "RelativeToolTip": "docs\\PLAN_FASE3_PATIENT_PORTAL.md",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
+              "WhenOpened": "2026-11-24T16:36:49.806Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "PLAN_PHASE1_EXECUTION.md",
+              "DocumentMoniker": "C:\\GitHub\\Klinara\\docs\\PLAN_PHASE1_EXECUTION.md",
+              "RelativeDocumentMoniker": "docs\\PLAN_PHASE1_EXECUTION.md",
+              "ToolTip": "C:\\GitHub\\Klinara\\docs\\PLAN_PHASE1_EXECUTION.md",
+              "RelativeToolTip": "docs\\PLAN_PHASE1_EXECUTION.md",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
+              "WhenOpened": "2026-11-24T16:36:48.881Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "PLAN_UI_REDESIGN.md",
+              "DocumentMoniker": "C:\\GitHub\\Klinara\\docs\\PLAN_UI_REDESIGN.md",
+              "RelativeDocumentMoniker": "docs\\PLAN_UI_REDESIGN.md",
+              "ToolTip": "C:\\GitHub\\Klinara\\docs\\PLAN_UI_REDESIGN.md",
+              "RelativeToolTip": "docs\\PLAN_UI_REDESIGN.md",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
+              "WhenOpened": "2026-11-24T16:36:47.975Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "PRD.md",
+              "DocumentMoniker": "C:\\GitHub\\Klinara\\docs\\PRD.md",
+              "RelativeDocumentMoniker": "docs\\PRD.md",
+              "ToolTip": "C:\\GitHub\\Klinara\\docs\\PRD.md",
+              "RelativeToolTip": "docs\\PRD.md",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
+              "WhenOpened": "2026-11-24T16:36:47.015Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "PRD_COMPLIANCE.md",
+              "DocumentMoniker": "C:\\GitHub\\Klinara\\docs\\PRD_COMPLIANCE.md",
+              "RelativeDocumentMoniker": "docs\\PRD_COMPLIANCE.md",
+              "ToolTip": "C:\\GitHub\\Klinara\\docs\\PRD_COMPLIANCE.md",
+              "RelativeToolTip": "docs\\PRD_COMPLIANCE.md",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
+              "WhenOpened": "2026-11-24T16:36:46.265Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
+              "Title": "ROLES_POLICIES.md",
+              "DocumentMoniker": "C:\\GitHub\\Klinara\\docs\\ROLES_POLICIES.md",
+              "RelativeDocumentMoniker": "docs\\ROLES_POLICIES.md",
+              "ToolTip": "C:\\GitHub\\Klinara\\docs\\ROLES_POLICIES.md",
+              "RelativeToolTip": "docs\\ROLES_POLICIES.md",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
+              "WhenOpened": "2026-11-24T16:36:45.441Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 9,
+              "Title": "SCHEDULE_SERVICE.md",
+              "DocumentMoniker": "C:\\GitHub\\Klinara\\docs\\SCHEDULE_SERVICE.md",
+              "RelativeDocumentMoniker": "docs\\SCHEDULE_SERVICE.md",
+              "ToolTip": "C:\\GitHub\\Klinara\\docs\\SCHEDULE_SERVICE.md",
+              "RelativeToolTip": "docs\\SCHEDULE_SERVICE.md",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
+              "WhenOpened": "2026-11-24T16:36:44.546Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 10,
+              "Title": "SERILOG.md",
+              "DocumentMoniker": "C:\\GitHub\\Klinara\\docs\\SERILOG.md",
+              "RelativeDocumentMoniker": "docs\\SERILOG.md",
+              "ToolTip": "C:\\GitHub\\Klinara\\docs\\SERILOG.md",
+              "RelativeToolTip": "docs\\SERILOG.md",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
+              "WhenOpened": "2026-11-24T16:36:43.671Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 11,
+              "Title": "SLOT_GENERATOR_SERVICE.md",
+              "DocumentMoniker": "C:\\GitHub\\Klinara\\docs\\SLOT_GENERATOR_SERVICE.md",
+              "RelativeDocumentMoniker": "docs\\SLOT_GENERATOR_SERVICE.md",
+              "ToolTip": "C:\\GitHub\\Klinara\\docs\\SLOT_GENERATOR_SERVICE.md",
+              "RelativeToolTip": "docs\\SLOT_GENERATOR_SERVICE.md",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
+              "WhenOpened": "2026-11-24T16:36:42.477Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 12,
+              "Title": "UI_DESIGN_SYSTEM.md",
+              "DocumentMoniker": "C:\\GitHub\\Klinara\\docs\\UI_DESIGN_SYSTEM.md",
+              "RelativeDocumentMoniker": "docs\\UI_DESIGN_SYSTEM.md",
+              "ToolTip": "C:\\GitHub\\Klinara\\docs\\UI_DESIGN_SYSTEM.md",
+              "RelativeToolTip": "docs\\UI_DESIGN_SYSTEM.md",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
+              "WhenOpened": "2026-11-24T16:36:41.083Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 13,
               "Title": "appsettings.json",
               "DocumentMoniker": "C:\\GitHub\\Klinara\\Klinara.Web\\appsettings.json",
               "RelativeDocumentMoniker": "Klinara.Web\\appsettings.json",
               "ToolTip": "C:\\GitHub\\Klinara\\Klinara.Web\\appsettings.json",
               "RelativeToolTip": "Klinara.Web\\appsettings.json",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA0AAAAWAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABEAAAAGAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
               "WhenOpened": "2026-11-24T15:13:05.546Z",
               "EditorCaption": ""

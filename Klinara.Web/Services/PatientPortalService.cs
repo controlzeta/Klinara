@@ -56,7 +56,7 @@ public class PatientPortalService : IPatientPortalService
             if (clinic == null)
             {
                 _logger.LogWarning("Clínica no encontrada para subdominio: {Subdomain}", clinicSubdomain);
-                return new PortalVerificationResult(false, "Clínica no encontrada", email);
+                return new PortalVerificationResult(false, ErrorCodes.ClinicNotFound, email);
             }
 
             // Buscar o crear paciente por email en esta clínica
@@ -83,7 +83,7 @@ public class PatientPortalService : IPatientPortalService
             // Verificar si el paciente está bloqueado
             if (patient.IsBlocked && patient.BlockedUntil.HasValue && patient.BlockedUntil.Value > DateTime.UtcNow)
             {
-                return new PortalVerificationResult(false, "El paciente está bloqueado para reservas por impuntualidades repetidas", email);
+                return new PortalVerificationResult(false, ErrorCodes.PatientBlocked, email);
             }
 
             // Buscar o crear ApplicationUser para enviar OTP (usuario "shadow" para portal)
@@ -122,7 +122,7 @@ public class PatientPortalService : IPatientPortalService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error enviando email de verificación a {Email} para subdominio {Subdomain}", email, clinicSubdomain);
-            return new PortalVerificationResult(false, "Error interno al enviar el código de verificación", email);
+            return new PortalVerificationResult(false, ErrorCodes.OtpSendError, email);
         }
     }
 
@@ -135,7 +135,7 @@ public class PatientPortalService : IPatientPortalService
 
             if (clinic == null)
             {
-                return new PortalTokenResult(false, Error: "Clínica no encontrada");
+                return new PortalTokenResult(false, Error: ErrorCodes.ClinicNotFound);
             }
 
             var portalUser = await _context.Users
@@ -143,7 +143,7 @@ public class PatientPortalService : IPatientPortalService
 
             if (portalUser == null)
             {
-                return new PortalTokenResult(false, Error: "Usuario no encontrado");
+                return new PortalTokenResult(false, Error: ErrorCodes.UserNotFound);
             }
 
             // Validar OTP
@@ -152,7 +152,7 @@ public class PatientPortalService : IPatientPortalService
             if (!isValid)
             {
                 _logger.LogWarning("OTP inválido para {Email} en clínica {ClinicId}", email, clinic.Id);
-                return new PortalTokenResult(false, Error: "Código de verificación inválido o expirado");
+                return new PortalTokenResult(false, Error: ErrorCodes.OtpInvalid);
             }
 
             // Invalidar OTP usado
@@ -164,13 +164,13 @@ public class PatientPortalService : IPatientPortalService
 
             if (patient == null)
             {
-                return new PortalTokenResult(false, Error: "Paciente no encontrado");
+                return new PortalTokenResult(false, Error: ErrorCodes.PatientNotFound);
             }
 
             // Verificar bloqueo
             if (patient.IsBlocked && patient.BlockedUntil.HasValue && patient.BlockedUntil.Value > DateTime.UtcNow)
             {
-                return new PortalTokenResult(false, Error: "El paciente está bloqueado para reservas por impuntualidades repetidas");
+                return new PortalTokenResult(false, Error: ErrorCodes.PatientBlocked);
             }
 
             // Crear token PortalAccess (30 min, single-use)
@@ -206,7 +206,7 @@ public class PatientPortalService : IPatientPortalService
 
             if (patientToken == null)
             {
-                return new PortalBookingResult(false, Error: "Token de acceso inválido, expirado o ya usado");
+                return new PortalBookingResult(false, Error: ErrorCodes.PortalAccessTokenInvalid);
             }
 
             var patient = patientToken.Patient;
@@ -217,13 +217,13 @@ public class PatientPortalService : IPatientPortalService
 
             if (patient == null)
             {
-                return new PortalBookingResult(false, Error: "Paciente no encontrado");
+                return new PortalBookingResult(false, Error: ErrorCodes.PatientNotFound);
             }
 
             // Verificar bloqueo (doble check)
             if (patient.IsBlocked && patient.BlockedUntil.HasValue && patient.BlockedUntil.Value > DateTime.UtcNow)
             {
-                return new PortalBookingResult(false, Error: "El paciente está bloqueado para reservas por impuntualidades repetidas");
+                return new PortalBookingResult(false, Error: ErrorCodes.PatientBlocked);
             }
 
             // Verificar que el doctor pertenece a la clínica
@@ -232,7 +232,7 @@ public class PatientPortalService : IPatientPortalService
 
             if (doctor == null)
             {
-                return new PortalBookingResult(false, Error: "Doctor no encontrado en esta clínica");
+                return new PortalBookingResult(false, Error: ErrorCodes.DoctorNotFoundInClinic);
             }
 
             // Crear cita usando AppointmentService (validaciones incluidas: horizonte 45d, traslapes, etc.)
@@ -292,7 +292,7 @@ public class PatientPortalService : IPatientPortalService
 
             if (patientToken == null)
             {
-                return new PortalConfirmationResult(false, Error: "Token de confirmación inválido, expirado o ya usado");
+                return new PortalConfirmationResult(false, Error: ErrorCodes.ConfirmationTokenInvalid);
             }
 
             if (!patientToken.AppointmentId.HasValue)
@@ -306,12 +306,12 @@ public class PatientPortalService : IPatientPortalService
 
             if (appointment == null)
             {
-                return new PortalConfirmationResult(false, Error: "Cita no encontrada");
+                return new PortalConfirmationResult(false, Error: ErrorCodes.AppointmentNotFound);
             }
 
             if (appointment.Status != AppointmentStatus.Scheduled)
             {
-                return new PortalConfirmationResult(false, Error: $"La cita no está en estado programado (actual: {appointment.Status})");
+                return new PortalConfirmationResult(false, Error: ErrorCodes.AppointmentNotScheduled);
             }
 
             // Confirmar cita
@@ -414,7 +414,7 @@ public class PatientPortalService : IPatientPortalService
 
             if (patientToken == null)
             {
-                return new PortalCancellationResult(false, Error: "Token de acceso inválido, expirado o ya usado");
+                return new PortalCancellationResult(false, Error: ErrorCodes.PortalAccessTokenInvalid);
             }
 
             var patient = patientToken.Patient;
@@ -425,7 +425,7 @@ public class PatientPortalService : IPatientPortalService
 
             if (patient == null)
             {
-                return new PortalCancellationResult(false, Error: "Paciente no encontrado");
+                return new PortalCancellationResult(false, Error: ErrorCodes.PatientNotFound);
             }
 
             // Buscar la cita más próxima del paciente (o la que se quiera cancelar - simplificado)
@@ -439,7 +439,7 @@ public class PatientPortalService : IPatientPortalService
 
             if (appointment == null)
             {
-                return new PortalCancellationResult(false, Error: "No hay citas programadas para cancelar");
+                return new PortalCancellationResult(false, Error: ErrorCodes.NoScheduledAppointments);
             }
 
             // Cancelar usando AppointmentService (isPatientCancellation = true)
@@ -469,7 +469,7 @@ public class PatientPortalService : IPatientPortalService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error cancelando cita desde portal con token {TokenPrefix}...", portalToken[..Math.Min(8, portalToken.Length)]);
-            return new PortalCancellationResult(false, Error: "Error interno al cancelar la cita");
+            return new PortalCancellationResult(false, Error: ErrorCodes.OtpSendError);
         }
     }
 
@@ -545,6 +545,8 @@ public class PatientPortalService : IPatientPortalService
 
         // Usar el email sender configurado (SmtpEmailSender en prod)
         var user = new ApplicationUser { Email = email, UserName = email };
+        // Envía el código OTP de verificación usando el método de reset de contraseña
+        // (el código de 6 dígitos es el mismo para verificación o reset)
         await _emailSender.SendPasswordResetCodeAsync(user, email, otpCode);
     }
 

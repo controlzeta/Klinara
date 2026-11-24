@@ -1,0 +1,55 @@
+@inherits LayoutComponentBase
+
+<div class="page klinara-shell">
+    <div class="sidebar klinara-sidebar">
+        <div class="top-row">
+            <h3 class="k-brand-copy">
+                <span class="k-brand-mark">
+                    <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-12S17.52 2 12 2zM12 4.2c1.37 0 2.7.43 3.87 1.24L15 5.82V10H9V5.82L10.13 4.2C11.5 3.57 12.87 3 14.2 3c3.07 0 5.5 2.47 5.5 5.5S6.07 14 2 14S-3.5 10.5-3.5 7c0-2.47 2.43-4.5 5.5-4.86z"/></svg>
+                </span>
+                Klinara Consultorio Dental
+            </h3>
+            <nav class="k-nav">
+                <a class="k-nav-link" href="/portal/@ContextClinicSubdomain">
+                    <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4L8.11 7.11L12 11.25L19 5.09L20.91 7.09L10 4ZM12 7L16 12L12 17L8 12Z"/></svg> Inicio
+                </a>
+                <a class="k-nav-link" href="/portal/@ContextClinicSubdomain/booking">
+                    <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 19h8l2-7H5v2h3v2h5v2h-3v2H8zm-7 2h7v-2H8v2zm7-4h2v2h3v-2h-3v-2H12v2zm7-6v2h-2v-2H12zm-2 1h2v3h3v-2h-3v-2H17zm-7 7h2v-2H12v2zm2-7v2h3v-2h-3v-2H12v2zm7 4h2v-2h3v-2h-3v-2h-2v2h3v2h-3v2H19z"/></svg> Reservar
+                </a>
+                @if (!string.IsNullOrEmpty(ContextPatientName)) {
+                    <div class="k-user-card">
+                        <div class="k-user-avatar">
+                            <span>@ContextPatientName[0]</span>
+                        </div>
+                        <div class="k-user-copy">
+                            <strong>@ContextPatientName</strong>
+                            <small>@ContextPatientEmail</small>
+                        </div>
+                    </div>
+                }
+            </nav>
+        </div>
+        <div class="k-sidebar-footer">
+            <small>Klinara v1.0</small>
+        </div>
+    </div>
+    <main class="klinara-main">
+        <div class="k-topbar">
+            <h2 class="k-page-heading">
+                <span>Klinara</span>
+                <span class="k-breadcrumbs" id="breadcrumbs">
+                    <strong>Portal Paciente</strong>
+                </span>
+            </h2>
+        </div>
+        <article class="k-dashboard-content px-4">
+            @Body
+        </article>
+    </main>
+</div>
+
+@code {
+    [Parameter] public string ContextClinicSubdomain { get; set; } = "";
+    [Parameter] public string ContextPatientName { get; set; } = "";
+    [Parameter] public string ContextPatientEmail { get; set; } = "";
+}

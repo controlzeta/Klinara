@@ -1,0 +1,54 @@
+@using Klinara.Web.Services
+@using Klinara.Web.Data
+
+<div class="doctor-selector-card">
+    <h3>Seleccionar médico</h3>
+    
+    <div class="doctor-list">
+        @if (IsLoading) {
+            <div class="spinner-sm">
+                <span class="bi bi-arrow-clockical-fill spin-anim-sm"></span>
+            </div>
+        } else {
+            @if (AvailableDoctors.Count == 0) {
+                <p class="text-muted">No hay doctores configurados</p>
+            } else {
+                <select @bind="SelectedDoctor" class="form-select doctor-select">
+                    <option value="">-- Seleccionar --</option>
+                    @foreach (var doctor in AvailableDoctors) {
+                        <option value="@doctor.DoctorId">
+                            @doctor.DoctorName
+                        </option>
+                    }
+                </select>
+                <button class="btn btn-primary btn-sm ms-2" @onclick="LoadSchedule">
+                    <span class="bi bi-clock"></span> Ver horario
+                </button>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public string? ClinicName { get; set; }
+    [Parameter] public List<DoctorAvailabilityDto>? AvailableDoctors { get; set; }
+    
+    private DoctorAvailabilityDto? SelectedDoctor { get; set; }
+    private bool IsLoading { get; set; } = true;
+    private bool ShowSchedule { get; set; } = false;
+
+    protected override void OnInitialized()
+    {
+        if (AvailableDoctors != null && AvailableDoctors.Count > 0)
+        {
+            SelectedDoctor = AvailableDoctors[0];
+            ShowSchedule = true;
+        }
+        IsLoading = false;
+    }
+
+    private async Task LoadSchedule()
+    {
+        // TODO: Llamar al schedule service
+    }
+}

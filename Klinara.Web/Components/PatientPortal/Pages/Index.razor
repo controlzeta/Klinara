@@ -1,0 +1,43 @@
+@page "/portal/@ContextClinicSubdomain"
+@using Microsoft.AspNetCore.Components.Authorization
+@using Klinara.Web
+@using Klinara.Web.Services
+@using Klinara.Web.Components.Account
+<PatientPortalLayout ContextClinicSubdomain="@ContextClinicSubdomain"
+                    ContextPatientName="PatientName"
+                    ContextPatientEmail="PatientEmail"
+                    ContextPageTitle="Klinara - Consultorio">
+
+    <div class="welcome-section">
+        <h2>Bienvenido a Klinara</h2>
+        <p>Tu consultorio dental de confianza</p>
+
+        <div class="actions">
+            <a class="btn btn-primary w-100 mb-2" href="/portal/@ContextClinicSubdomain/verify">
+                <span class="bi bi-lock-fill"></span>
+                <span>Reservar cita</span>
+            </a>
+            <a class="btn btn-secondary w-100 mb-2" href="/portal/@ContextClinicSubdomain/doctors">
+                <span class="bi bi-person-fill"></span>
+                <span>Ver doctores</span>
+            </a>
+        </div>
+
+        <div class="info-box">
+            <h3>Para reservar:</h3>
+            <ul>
+                <li>Ingresa tu correo electrónico</li>
+                <li>Verifica tu identidad con código de 6 dígitos</li>
+                <li>Selecciona doctor y horario disponible</li>
+                <li>Confirma tu cita por correo</li>
+            </ul>
+        </div>
+    </div>
+
+</PatientPortalLayout>
+
+@code {
+    [Parameter] public string ContextClinicSubdomain { get; set; } = "";
+    [SupplyParameterFromQuery] public string PatientName { get; set; } = "";
+    [SupplyParameterFromQuery] public string PatientEmail { get; set; } = "";
+}

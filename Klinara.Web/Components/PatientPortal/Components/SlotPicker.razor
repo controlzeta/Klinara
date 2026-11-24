@@ -1,0 +1,52 @@
+@using Klinara.Web.Data
+
+<div class="slot-picker-card">
+    <h3>Seleccionar horario</h3>
+    
+    <div class="slot-grid">
+        @foreach (var slot in AvailableSlots) {
+            string className = slot.IsBooked ? "booked" : slot.IsBlocked ? "blocked" : "available";
+            <div class="slot-item @className" @onclick="() => SelectSlot(slot)">
+                <span class="slot-time">
+                    @slot.StartAt.ToShortTimeString() - @slot.EndAt.ToShortTimeString()
+                </span>
+                <small>@slot.StartAt.ToString("ddd")</small>
+                @if (slot.IsBooked) {
+                    <span class="status-booked">Reservado</span>
+                } else if (slot.IsBlocked) {
+                    <span class="status-blocked">Bloqueado</span>
+                } else {
+                    <span class="status-available">Disponible</span>
+                }
+            </div>
+        }
+    </div>
+    
+    @if (AvailableSlots.Count == 0) {
+        <p class="text-muted">No hay slots disponibles</p>
+    }
+    
+    <div class="slot-footer">
+        <button class="btn btn-primary w-100" @onclick="ConfirmSelection">
+            <span class="bi bi-check-circle-fill"></span> Confirmar selección
+        </button>
+    </div>
+</div>
+
+@code {
+    [Parameter] public List<TimeSlot> AvailableSlots { get; set; } = new();
+    [Parameter] public string? ClinicName { get; set; }
+    
+    private TimeSlot? SelectedSlot { get; set; }
+
+    private void SelectSlot(TimeSlot slot)
+    {
+        SelectedSlot = slot;
+    }
+
+    private void ConfirmSelection()
+    {
+        if (SelectedSlot == null) return;
+        // TODO: Navegar a confirmación o crear cita
+    }
+}
