@@ -1,35 +1,35 @@
-@using Klinara.Web.Authorization
-@implements IDisposable
-
-@inject NavigationManager NavigationManager
-@inject Klinara.Web.Data.ApplicationDbContext DbContext
-@inject AuthenticationStateProvider AuthenticationStateProvider
-
-<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">Klinara.Web</a>
-    </div>
+<div class="k-brand-bar">
+    <a class="navbar-brand" href="" aria-label="Klinara, inicio">
+        <span class="k-brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M10 3h4v7h7v4h-7v7h-4v-7H3v-4h7z" /></svg>
+        </span>
+        <span class="k-brand-copy"><span>Klinara</span><small>ADMINISTRACIÓN CLÍNICA</small></span>
+    </a>
 </div>
 
-<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
-<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
-    <nav class="nav flex-column">
+<div class="k-clinic-switcher" aria-label="Contexto del consultorio">
+    <span class="k-clinic-avatar" aria-hidden="true">K</span>
+    <span class="k-clinic-copy"><strong>Espacio de trabajo</strong><small>Gestión clínica</small></span>
+</div>
+
+<div class="nav-scrollable" onclick="window.klinaraUi?.closeMenu()">
+    <nav class="nav flex-column" aria-label="Consultorio">
+        <p class="k-nav-heading">Consultorio</p>
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-speedometer2 me-2" aria-hidden="true"></span> Dashboard
+                <span class="bi bi-speedometer2 me-2" aria-hidden="true"></span> Resumen
             </NavLink>
         </div>
-
         <AuthorizeView>
             <Authorized>
                 <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="staff/patients">
-                        <span class="bi bi-people me-2" aria-hidden="true"></span> Pacientes
+                    <NavLink class="nav-link" href="staff/appointments">
+                        <span class="bi bi-calendar-event me-2" aria-hidden="true"></span> Agenda
                     </NavLink>
                 </div>
                 <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="staff/appointments">
-                        <span class="bi bi-calendar-event me-2" aria-hidden="true"></span> Citas
+                    <NavLink class="nav-link" href="staff/patients">
+                        <span class="bi bi-people me-2" aria-hidden="true"></span> Pacientes
                     </NavLink>
                 </div>
                 <div class="nav-item px-3">
@@ -37,33 +37,32 @@
                         <span class="bi bi-cash-stack me-2" aria-hidden="true"></span> Pagos
                     </NavLink>
                 </div>
-                @if (IsPlatformAdmin())
-                {
-                    <div class="nav-item px-3">
-                        <NavLink class="nav-link" href="Account/Manage">
-                            <span class="bi bi-person-fill-nav-menu" aria-hidden="true"></span> Configuración
-                        </NavLink>
-                    </div>
-                }
+                <p class="k-nav-heading mt-4">Cuenta</p>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="Account/Manage">
+                        <span class="bi bi-person-gear me-2" aria-hidden="true"></span> Mi cuenta
+                    </NavLink>
+                </div>
                 <div class="nav-item px-3">
                     <form action="Account/Logout" method="post">
                         <AntiforgeryToken />
                         <input type="hidden" name="ReturnUrl" value="~/" />
-                        <button type="submit" class="nav-link">
+                        <button type="submit" class="nav-link k-logout">
                             <span class="bi bi-box-arrow-right me-2" aria-hidden="true"></span> Cerrar sesión
                         </button>
                     </form>
                 </div>
             </Authorized>
             <NotAuthorized>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="Account/Register">
-                        <span class="bi bi-person-nav-menu" aria-hidden="true"></span> Registrarse
-                    </NavLink>
-                </div>
+                <p class="k-nav-heading mt-4">Acceso</p>
                 <div class="nav-item px-3">
                     <NavLink class="nav-link" href="Account/Login">
                         <span class="bi bi-person-badge-nav-menu" aria-hidden="true"></span> Iniciar sesión
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="Account/Register">
+                        <span class="bi bi-person-nav-menu" aria-hidden="true"></span> Registrarse
                     </NavLink>
                 </div>
             </NotAuthorized>
@@ -71,55 +70,15 @@
     </nav>
 </div>
 
-@code {
-    private string? currentUrl;
-    private string? _subdomain;
+<div class="k-sidebar-footer">
+    <span>Gestión clara para tu consultorio</span>
+    <AuthorizeView>
+        <Authorized>
+            <div class="k-user-card">
+                <span class="k-user-avatar" aria-hidden="true">K</span>
+                <span class="k-user-copy"><strong>@context.User.Identity?.Name</strong><small>Sesión activa</small></span>
+            </div>
+        </Authorized>
+    </AuthorizeView>
+</div>
 
-    protected override async Task OnInitializedAsync()
-    {
-        currentUrl = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
-        NavigationManager.LocationChanged += OnLocationChanged;
-
-        try
-        {
-            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-            var user = authState.User;
-            if (user.Identity?.IsAuthenticated == true)
-            {
-                var clinicIdClaim = user.FindFirst("ClinicId")?.Value;
-                if (Guid.TryParse(clinicIdClaim, out var clinicId))
-                {
-                    var clinic = await DbContext.Clinics.FindAsync(clinicId);
-                    _subdomain = clinic?.Subdomain;
-                }
-
-                if (string.IsNullOrWhiteSpace(_subdomain))
-                {
-                    var firstClinic = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.FirstOrDefaultAsync(DbContext.Clinics);
-                    _subdomain = firstClinic?.Subdomain ?? "demo";
-                }
-            }
-        }
-        catch
-        {
-            _subdomain = "demo";
-        }
-    }
-
-    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
-    {
-        currentUrl = NavigationManager.ToBaseRelativePath(e.Location);
-        StateHasChanged();
-    }
-
-    public void Dispose()
-    {
-        NavigationManager.LocationChanged -= OnLocationChanged;
-    }
-
-    private bool IsPlatformAdmin()
-    {
-        var authState = AuthenticationStateProvider.GetAuthenticationStateAsync().Result;
-        return authState.User.IsInRole(KlinaraRoles.PlatformAdmin);
-    }
-}

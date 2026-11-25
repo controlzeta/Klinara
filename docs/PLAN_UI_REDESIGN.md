@@ -1,6 +1,6 @@
 # Plan de la Fase 7 — Rediseño de todas las pantallas
 
-**Estado:** planeada; implementación pendiente.  
+**Estado:** en ejecución; aplicación visual en curso.  
 **Alcance:** interfaz web de Klinara, componentes compartidos y flujos visuales del MVP.  
 **Referencia visual:** dashboard azul, limpio y enfocado en salud, aprobado como dirección visual.
 
@@ -8,12 +8,15 @@
 
 Aplicar un sistema visual coherente a todas las pantallas del MVP, manteniendo las reglas de negocio, permisos y validaciones existentes. Diseñar primero para móvil y adaptar después a escritorio. La interfaz debe indicar claramente cuándo se muestran datos de demostración.
 
-## Estado inicial verificado
+## Estado inicial verificado (2026-11-24)
 
-- `Klinara.Web/Components/Pages/Home.razor` todavía contiene la pantalla de plantilla (`Hello, world!`).
-- `Klinara.Web/Components/Layout/NavMenu.razor` conserva navegación de plantilla en inglés; no representa aún la navegación funcional de Klinara.
-- `wwwroot/klinara-theme.css` y `wwwroot/klinara-theme.js` existen como archivos locales sin seguimiento de Git y todavía no están conectados desde `Components/App.razor`.
-- Por lo tanto, el rediseño visual aún no está integrado en la aplicación. Estos archivos deben revisarse y probarse antes de decidir si se reutilizan.
+- Se localizaron **43 componentes con rutas**, agrupados en inicio, tres pantallas de personal, seis pantallas del portal del paciente, errores y flujos de autenticación/cuenta de ASP.NET Identity.
+- `Home.razor` ya presenta métricas consultadas desde EF Core y accesos al portal/perfil; no debe reemplazarse por métricas ficticias.
+- Existen pantallas funcionales de personal (`StaffPatients`, `StaffAppointments`, `StaffPayments`) y páginas de reserva/consulta/cancelación en `Components/PatientPortal`.
+- El contenido utiliza Bootstrap y `app.css` todavía declara Helvetica Neue y el azul predeterminado. `App.razor` declara `lang="en"`, no enlaza el sistema visual de Klinara y `MainLayout` aún contiene el enlace de plantilla “About”.
+- El portal ya tiene `PatientPortalLayout`, con estructura diferente al shell administrativo. Debe compartir tokens y tema, no forzarse a usar la navegación del personal.
+- Las pantallas de Identity/Manage pertenecen al mismo alcance visual; las mejoras deben llegar por estilos globales/layouts compartidos sin alterar sus formularios ni handlers.
+- Hay cambios locales previos en servicios, controladores, seeder y documentación. Se preservan y no se mezclan con la fase visual.
 
 ## Inventario de pantallas
 
@@ -33,22 +36,25 @@ Aplicar un sistema visual coherente a todas las pantallas del MVP, manteniendo l
 ## Orden de trabajo
 
 ### 7.0 — Auditoría y fundamentos
-- Inventariar rutas, componentes, permisos y flujos existentes antes de modificar vistas.
+- Inventariar las 43 rutas, componentes, permisos y flujos existentes antes de modificar vistas.
 - Acordar el mapa de navegación por rol; no mostrar enlaces activos a módulos que aún no existan.
-- Aplicar `docs/UI_DESIGN_SYSTEM.md` como fuente de colores, tipografía, espaciado y componentes.
-- Confirmar estructura compartida, responsive design, tema claro/oscuro y estados de carga/error/vacío.
-- Registrar capturas iniciales para comparar el resultado sin reemplazar pruebas funcionales.
+- Aplicar el Design System Coinbase adaptado a Klinara según `docs/UI_DESIGN_SYSTEM.md` (azul `#0052FF`, DM Sans, superficies blancas/near-black/gris frío y CTA primarios píldora).
+- Crear una sola hoja global de overrides sobre Bootstrap; conservar la estructura funcional de las vistas y usar overrides específicos solo donde la inspección demuestre una excepción.
+- Definir variables Bootstrap en claro/oscuro, tamaños de texto legibles y estados de foco/contraste.
+- Confirmar componentes compartidos, tema, estados de carga/error/vacío y capturas de referencia.
 
 ### 7.1 — Shell, navegación y autenticación
-- Rediseñar sidebar, selector de consultorio, encabezado, navegación móvil y perfil/sesión.
-- Aplicar el mismo sistema a login, OTP y recuperación de contraseña.
-- Mostrar errores de autenticación y expiración con mensajes claros, sin filtrar detalles técnicos.
-- Restringir u ocultar acciones según roles y mantener los controles de autorización del servidor.
+- Rediseñar `MainLayout` y `NavMenu`: marca, contexto de clínica, rutas por rol, menú móvil, sesión y selector de tema.
+- Aplicar el mismo sistema a `PatientPortalLayout` sin mezclar navegación de paciente con la de personal.
+- Aplicar la capa global a las pantallas de Identity/Manage, manteniendo sus formularios, handlers y reglas de autorización.
+- Añadir tema claro/oscuro persistente en los layouts administrativos, de cuenta y del portal.
+- Corregir `lang="es"` y revisar el flujo de autenticación/errores sin alterar el contrato funcional.
 
-### 7.2 — Dashboard
-- Implementar el dashboard aprobado: indicadores, agenda diaria, próxima cita, acciones rápidas, actividad y pagos recientes.
-- Mantener una etiqueta visible de demostración mientras sus datos sean ficticios.
-- No usar nombres ni cifras ficticias fuera de las vistas de demo.
+### 7.2 — Dashboard y pantallas de personal
+- Aplicar el dashboard aprobado a los datos reales que ya carga `Home.razor`; no sustituirlos por cifras ficticias.
+- Mantener accesos a portal/perfil y contexto del consultorio con autorización vigente.
+- Rediseñar `StaffPatients`, `StaffAppointments` y `StaffPayments`, incluidos tablas, filtros, estados vacíos, modales, validación y acciones.
+- No usar nombres ni cifras ficticias fuera de una demo explícitamente marcada.
 
 ### 7.3 — Pacientes
 - Diseñar búsqueda, filtros, lista, formularios y resumen del paciente.
@@ -84,10 +90,11 @@ Aplicar un sistema visual coherente a todas las pantallas del MVP, manteniendo l
 - Añadir una comprobación para detectar el carácter de reemplazo `�` en textos visibles y archivos fuente.
 
 ### 7.9 — Validación y salida
-- Probar en viewport móvil de 320–390 px, tablet de 768 px y escritorio de 1280–1440 px.
-- Revisar modo claro y oscuro, navegación por teclado, responsive y estados vacíos/de error.
+- Probar todas las familias de rutas (staff, portal, login/registro, Manage, errores) en móvil 320–390 px, tablet 768 px y escritorio 1280–1440 px.
+- Revisar modo claro/oscuro, navegación por teclado, contraste, responsive y estados vacíos/de error.
 - Ejecutar build Release y pruebas de componentes/rutas; agregar pruebas Playwright para los flujos críticos del MVP.
 - Confirmar que ninguna pantalla enlaza a una ruta inexistente y que las pantallas sin implementar se identifican como pendientes.
+- Capturar al menos dashboard, agenda, pacientes, pagos, portal, login y gestión de cuenta en ambos temas.
 
 ## Criterios de aceptación de la fase
 

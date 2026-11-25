@@ -12,11 +12,16 @@ public class ClinicSubdomainMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly ILogger<ClinicSubdomainMiddleware> _logger;
+    private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
 
-    public ClinicSubdomainMiddleware(RequestDelegate next, ILogger<ClinicSubdomainMiddleware> logger)
+    public ClinicSubdomainMiddleware(
+        RequestDelegate next,
+        ILogger<ClinicSubdomainMiddleware> logger,
+        IDbContextFactory<ApplicationDbContext> dbContextFactory)
     {
         _next = next;
         _logger = logger;
+        _dbContextFactory = dbContextFactory;
     }
 
     public async Task InvokeAsync(HttpContext context)
@@ -33,9 +38,8 @@ public class ClinicSubdomainMiddleware
 
         if (!string.IsNullOrEmpty(subdomain))
         {
-            // Resolver ClinicId y guardarlo en HttpContext.Items para uso posterior
-            using var scope = context.RequestServices.CreateScope();
-            var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            // Usar factory para DbContext completamente independiente (evita conflictos con prerendering Blazor)
+            using var dbContext = _dbContextFactory.CreateDbContext();
 
             var clinic = await dbContext.Clinics
                 .AsNoTracking()
@@ -51,7 +55,6 @@ public class ClinicSubdomainMiddleware
             else
             {
                 _logger.LogWarning("Subdominio no encontrado o inactivo: {Subdomain}", subdomain);
-                // No retornamos 404 aquí, dejamos que el controller maneje el caso
             }
         }
 

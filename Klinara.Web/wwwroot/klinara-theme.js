@@ -3,6 +3,7 @@
 
     function setTheme(theme) {
         document.documentElement.dataset.theme = theme;
+        document.documentElement.dataset.bsTheme = theme;
         try {
             localStorage.setItem(storageKey, theme);
         } catch {
@@ -19,6 +20,7 @@
                 // Keep the default light theme if storage is unavailable.
             }
             document.documentElement.dataset.theme = theme;
+            document.documentElement.dataset.bsTheme = theme;
         },
         toggleTheme() {
             const nextTheme = document.documentElement.dataset.theme === "dark" ? "light" : "dark";

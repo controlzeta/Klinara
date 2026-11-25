@@ -21,6 +21,12 @@ public class PaymentsController : ControllerBase
     public async Task<ActionResult<PaymentResult>> RegisterPayment([FromBody] RegisterPaymentRequestDto req)
     {
         var userId = GetCurrentUserId();
+        var userClinicId = GetCurrentUserClinicId();
+        
+        // Validar que el clinicId del request coincide con la clínica del usuario (excepto PlatformAdmin)
+        if (userClinicId.HasValue && req.ClinicId != userClinicId.Value)
+            return Forbid();
+
         var dto = new RegisterPaymentDto(
             req.ClinicId,
             req.PatientId,
@@ -44,7 +50,8 @@ public class PaymentsController : ControllerBase
     {
         try
         {
-            var balance = await _paymentService.GetPatientBalanceAsync(patientId);
+            var userClinicId = GetCurrentUserClinicId();
+            var balance = await _paymentService.GetPatientBalanceAsync(patientId, userClinicId);
             return Ok(balance);
         }
         catch (KeyNotFoundException)
@@ -59,6 +66,12 @@ public class PaymentsController : ControllerBase
         [FromQuery] DateTime? startDate = null,
         [FromQuery] DateTime? endDate = null)
     {
+        var userClinicId = GetCurrentUserClinicId();
+        
+        // PlatformAdmin puede ver cualquier clínica; ClinicAdmin/Doctor/Employee solo la suya
+        if (userClinicId.HasValue && clinicId != userClinicId.Value)
+            return Forbid();
+
         var payments = await _paymentService.GetPaymentsByClinicAsync(clinicId, startDate, endDate);
         return Ok(payments);
     }
@@ -66,7 +79,9 @@ public class PaymentsController : ControllerBase
     [HttpPut("patients/{patientId:guid}/total-due")]
     public async Task<ActionResult> UpdateTotalDue(Guid patientId, [FromBody] UpdateTotalDueDto req)
     {
-        var result = await _paymentService.UpdatePatientTotalDueAsync(patientId, req.TotalDue);
+        var userClinicId = GetCurrentUserClinicId();
+        
+        var result = await _paymentService.UpdatePatientTotalDueAsync(patientId, req.TotalDue, userClinicId);
         if (!result.Success)
             return BadRequest(new { Error = result.Error });
 
@@ -77,6 +92,12 @@ public class PaymentsController : ControllerBase
     {
         var claim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
         return Guid.TryParse(claim, out var id) ? id : Guid.Empty;
+    }
+
+    private Guid? GetCurrentUserClinicId()
+    {
+        var claim = User.FindFirst("ClinicId")?.Value;
+        return Guid.TryParse(claim, out var id) ? id : null;
     }
 }
 

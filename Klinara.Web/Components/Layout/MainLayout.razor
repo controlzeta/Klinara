@@ -1,23 +1,31 @@
 ﻿@inherits LayoutComponentBase
 
-<div class="page">
-    <div class="sidebar">
+<div class="page klinara-shell">
+    <aside id="klinara-navigation" class="sidebar klinara-sidebar" aria-label="Navegación principal">
         <NavMenu />
-    </div>
+    </aside>
+    <button type="button" class="k-sidebar-backdrop" aria-label="Cerrar menú" onclick="window.klinaraUi?.closeMenu()"></button>
 
-    <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-        </div>
-
-        <article class="content px-4">
+    <main class="klinara-main">
+        <header class="k-app-topbar">
+            <button type="button" class="k-icon-button k-mobile-menu" aria-label="Abrir menú" aria-controls="klinara-navigation" onclick="window.klinaraUi?.toggleMenu()">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
+            </button>
+            <div class="k-topbar-context"><strong>Klinara</strong><span> / Administración del consultorio</span></div>
+            <div class="k-topbar-actions">
+                <button type="button" class="k-icon-button" aria-label="Cambiar tema claro u oscuro" title="Cambiar tema" onclick="window.klinaraUi?.toggleTheme()">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32 1.41-1.41" /></svg>
+                </button>
+            </div>
+        </header>
+        <article class="content k-app-content">
             @Body
         </article>
     </main>
 </div>
 
 <div id="blazor-error-ui" data-nosnippet>
-    An unhandled error has occurred.
-    <a href="." class="reload">Reload</a>
-    <span class="dismiss">🗙</span>
+    <span>Ocurrió un error inesperado.</span>
+    <a href="." class="reload">Recargar</a>
+    <span class="dismiss" role="button" aria-label="Cerrar">×</span>
 </div>

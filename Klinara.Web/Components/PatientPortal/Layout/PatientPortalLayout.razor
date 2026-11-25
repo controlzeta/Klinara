@@ -7,20 +7,20 @@
             <h3 class="k-brand-copy mb-3 d-flex align-items-center">
                 <span class="k-brand-mark me-2 text-primary">
                     <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-12S17.52 2 12 2zM12 4.2c1.37 0 2.7.43 3.87 1.24L15 5.82V10H9V5.82L10.13 4.2C11.5 3.57 12.87 3 14.2 3c3.07 0 5.5 2.47 5.5 5.5S6.07 14 2 14S-3.5 10.5-3.5 7c0-2.47 2.43-4.5 5.5-4.86z"/>
+                        <path d="M10 3h4v7h7v4h-7v7h-4v-7H3v-4h7z"/>
                     </svg>
                 </span>
                 <span class="fw-bold">@(string.IsNullOrEmpty(ClinicName) ? (SessionState.ClinicName ?? "Klinara") : ClinicName)</span>
             </h3>
 
-            <nav class="nav flex-column gap-1">
-                <a class="nav-link text-dark py-2 px-3 rounded hover-bg" href="/portal/@EffectiveSubdomain">
+            <nav class="nav flex-column gap-1" aria-label="Portal del paciente" onclick="window.klinaraUi?.closeMenu()">
+                <a class="nav-link k-nav-link text-dark py-2 px-3 rounded hover-bg" href="/portal/@EffectiveSubdomain">
                     <i class="bi bi-house-door me-2"></i> Inicio
                 </a>
-                <a class="nav-link text-dark py-2 px-3 rounded hover-bg" href="/portal/@EffectiveSubdomain/verify">
+                <a class="nav-link k-nav-link text-dark py-2 px-3 rounded hover-bg" href="/portal/@EffectiveSubdomain/verify">
                     <i class="bi bi-calendar-plus me-2"></i> Reservar cita
                 </a>
-                <a class="nav-link text-dark py-2 px-3 rounded hover-bg" href="/portal/@EffectiveSubdomain/appointment">
+                <a class="nav-link k-nav-link text-dark py-2 px-3 rounded hover-bg" href="/portal/@EffectiveSubdomain/appointment">
                     <i class="bi bi-calendar-check me-2"></i> Mis citas
                 </a>
             </nav>
@@ -46,8 +46,18 @@
         </div>
     </div>
 
-    <main class="klinara-main flex-grow-1 p-3 p-md-4">
-        <div class="container-fluid max-w-4xl">
+    <button type="button" class="k-sidebar-backdrop" aria-label="Cerrar menú" onclick="window.klinaraUi?.closeMenu()"></button>
+    <main class="klinara-main flex-grow-1">
+        <header class="k-portal-topbar">
+            <button type="button" class="k-icon-button k-mobile-menu" aria-label="Abrir menú" onclick="window.klinaraUi?.toggleMenu()">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
+            </button>
+            <div class="k-portal-label">@(string.IsNullOrWhiteSpace(ClinicName) ? (SessionState.ClinicName ?? "Portal del paciente") : ClinicName)</div>
+            <button type="button" class="k-icon-button" aria-label="Cambiar tema claro u oscuro" title="Cambiar tema" onclick="window.klinaraUi?.toggleTheme()">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32 1.41-1.41" /></svg>
+            </button>
+        </header>
+        <div class="k-portal-content">
             @Body
         </div>
     </main>

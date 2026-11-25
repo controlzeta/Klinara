@@ -6,9 +6,9 @@ namespace Klinara.Web.Services;
 public interface IPaymentService
 {
     Task<PaymentResult> RegisterPaymentAsync(RegisterPaymentDto dto, Guid createdByUserId);
-    Task<PatientBalanceDto> GetPatientBalanceAsync(Guid patientId);
+    Task<PatientBalanceDto> GetPatientBalanceAsync(Guid patientId, Guid? requestingClinicId = null);
     Task<List<PaymentSummaryDto>> GetPaymentsByClinicAsync(Guid clinicId, DateTime? startDate = null, DateTime? endDate = null);
-    Task<PaymentResult> UpdatePatientTotalDueAsync(Guid patientId, decimal totalDue);
+    Task<PaymentResult> UpdatePatientTotalDueAsync(Guid patientId, decimal totalDue, Guid? requestingClinicId = null);
 }
 
 public record RegisterPaymentDto(
@@ -112,11 +112,16 @@ public class PaymentService : IPaymentService
         }
     }
 
-    public async Task<PatientBalanceDto> GetPatientBalanceAsync(Guid patientId)
+    public async Task<PatientBalanceDto> GetPatientBalanceAsync(Guid patientId, Guid? requestingClinicId = null)
     {
-        var patient = await _context.Patients
+        var query = _context.Patients
             .Include(p => p.Payments)
-            .FirstOrDefaultAsync(p => p.Id == patientId);
+            .Where(p => p.Id == patientId);
+
+        if (requestingClinicId.HasValue)
+            query = query.Where(p => p.ClinicId == requestingClinicId.Value);
+
+        var patient = await query.FirstOrDefaultAsync();
 
         if (patient == null)
             throw new KeyNotFoundException("Paciente no encontrado.");
@@ -173,9 +178,14 @@ public class PaymentService : IPaymentService
             .ToListAsync();
     }
 
-    public async Task<PaymentResult> UpdatePatientTotalDueAsync(Guid patientId, decimal totalDue)
+    public async Task<PaymentResult> UpdatePatientTotalDueAsync(Guid patientId, decimal totalDue, Guid? requestingClinicId = null)
     {
-        var patient = await _context.Patients.FindAsync(patientId);
+        var query = _context.Patients.Where(p => p.Id == patientId);
+        
+        if (requestingClinicId.HasValue)
+            query = query.Where(p => p.ClinicId == requestingClinicId.Value);
+            
+        var patient = await query.FirstOrDefaultAsync();
         if (patient == null)
             return new PaymentResult(false, Error: "Paciente no encontrado.");
 

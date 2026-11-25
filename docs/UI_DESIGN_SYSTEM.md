@@ -20,33 +20,30 @@ Principios:
 
 ## 2. Paleta de color
 
-Los valores son tokens iniciales del tema visual; deben revisarse con medición de contraste antes de cerrar la implementación.
+La paleta parte del Design System de Coinbase (`templates/coinbase.md`) y se adapta a Klinara: se conservan su azul, superficies blanca/negra, gris frío, DM Sans y CTA tipo píldora; los estados clínicos usan colores semánticos accesibles. No se replica la composición ni la marca de Coinbase. Medir contraste antes de cerrar la implementación.
 
 | Token | Tema claro | Tema oscuro | Uso |
 |---|---|---|---|
-| Azul principal | `#155EEF` | `#80ADFF` | Acción primaria, enlaces y selección |
-| Azul hover | `#0D4FD6` | `#A7C6FF` | Estado hover de acciones |
-| Azul suave | `#EDF4FF` | `#192D4A` | Fondo de selección, información y próxima cita |
-| Azul de borde | `#C9DCFF` | `#345276` | Foco y bordes destacados |
-| Tinta principal | `#172B4D` | `#E8EFF9` | Texto principal |
-| Título | `#162B4D` | `#EDF4FF` | Títulos y cifras principales |
-| Texto secundario | `#67768E` | `#AAB8CC` | Ayuda, etiquetas secundarias |
-| Texto tenue | `#91A0B5` | `#8394AD` | Metadatos y etiquetas auxiliares |
-| Superficie | `#FFFFFF` | `#142235` | Tarjetas, barra superior y formularios |
-| Fondo | `#F6F9FD` | `#0E1928` | Fondo general |
-| Borde | `#E5EBF3` | `#2A3A50` | Separadores y contenedores |
-| Éxito | `#13846B` | `#63D6B5` | Confirmación/atendida |
-| Advertencia | `#946309` | `#F0C263` | Pendiente/por confirmar |
-| Riesgo | `#B84C61` | `#FF91A2` | Error/cancelación cuando aplique |
+| Azul de marca | `#0052FF` | `#0052FF` | Acción primaria y selección |
+| Azul hover | `#578BFA` | `#578BFA` | Hover/realce de acciones |
+| Azul de enlace | `#0667D0` | `#80ADFF` | Enlaces secundarios |
+| Fondo principal | `#FFFFFF` | `#0A0B0D` | Fondo de aplicación |
+| Superficie secundaria | `#EEF0F3` | `#282B31` | Campos, superficies y controles secundarios |
+| Texto principal | `#0A0B0D` | `#FFFFFF` | Contenido y títulos |
+| Texto secundario | `#5B616E` | `#C1C5CE` | Ayuda y metadatos |
+| Borde | `rgba(91,97,110,.20)` | `rgba(255,255,255,.16)` | Separadores y contenedores |
+| Éxito | `#087A5B` | `#59C99D` | Confirmación/atendida |
+| Advertencia | `#8A5B00` | `#F0C263` | Pendiente/por confirmar |
+| Riesgo | `#B4233B` | `#FF8FA3` | Error/cancelación cuando aplique |
 
 Los colores de estado no sustituyen el texto. Por ejemplo, usar “Por confirmar” junto con el color y no solo un punto amarillo. Verificar contraste WCAG AA, especialmente texto pequeño y controles en tema oscuro.
 
 ## 3. Tipografía, espaciado y forma
 
-- **Familia:** DM Sans; fallback `Inter, system-ui, -apple-system, "Segoe UI", sans-serif`.
-- **Jerarquía orientativa:** títulos de página 24–28 px; títulos de panel 13–16 px; texto de trabajo 12–14 px; metadatos 10–12 px. Evitar usar tamaños inferiores a 12 px para información necesaria para completar una tarea.
-- **Escala de espaciado:** 4, 8, 12, 16, 24, 32, 40 y 48 px; mantener incrementos previsibles.
-- **Radios:** 8–10 px para controles, 12 px para grupos pequeños y 16 px para tarjetas principales.
+- **Familia:** DM Sans; stack `'DM Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif`. Usar `font-feature-settings: "ss01"`; números/tablas con `"tnum"`.
+- **Jerarquía orientativa:** encabezado de página 24–32 px; títulos de panel 18–20 px; lectura de trabajo 16 px; texto secundario 14–16 px; captions 13–14 px. No bajar de 13 px en información necesaria para operar.
+- **Escala de espaciado:** base 8 px; usar 4, 8, 12, 16, 24, 32 y 48 px para controles y secciones.
+- **Radios:** 4–8 px en controles compactos; 12–16 px en tarjetas/superficies; 56 px solo en CTA primarios tipo píldora, no en tarjetas ni tablas.
 - **Bordes:** 1 px, bajo contraste; usar sombra ligera solo para separar tarjetas de la superficie.
 - **Foco:** contorno visible de 3 px con separación de 2 px; no quitar `outline` sin reemplazo accesible.
 - **Iconografía:** SVG simple, trazo consistente; iconos decorativos ocultos a lectores de pantalla y controles con nombre accesible.
@@ -72,7 +69,7 @@ Puntos de quiebre iniciales: 1100 px para compactar, 820 px para convertir el sh
 ## 5. Componentes y patrones
 
 - **Navegación:** área actual resaltada, grupos cortos y opción de consultorio claramente identificada. Ocultar acciones no autorizadas; enlaces aún no implementados deben estar deshabilitados y etiquetados, no conducir a 404.
-- **Botones:** primario para la acción principal de la pantalla; secundario para acciones alternativas; destructivo solo para cancelar/eliminar y con confirmación cuando haya pérdida de datos.
+- **Botones:** primario para la acción principal, DM Sans semibold de 16 px y forma píldora (56 px); secundarios compactos con radio 8 px; destructivo solo para cancelar/eliminar y con confirmación cuando haya pérdida de datos. Respetar un área táctil mínima de 44 px.
 - **Tarjetas:** contenedor para cifras, agenda, próxima cita y actividad; mantener títulos y subtítulos de lectura rápida.
 - **Formularios:** etiquetas persistentes, requerido explícito, ayuda junto al campo, validación asociada y resumen de error cuando aplique.
 - **Listas y tablas:** búsqueda/filtros visibles, encabezados comprensibles, paginación si se necesita; en móvil, conservar contexto del registro y acceso a acciones.
