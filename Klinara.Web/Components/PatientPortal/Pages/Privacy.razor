@@ -1,0 +1,124 @@
+@page "/privacy"
+@layout PatientPortalLayout
+@rendermode InteractiveServer
+@inject PatientPortalSessionState SessionState
+@inject NavigationManager NavigationManager
+
+<div class="privacy-container k-portal-content p-4">
+    <div class="row">
+        <div class="col-12">
+            <h2 class="fw-bold text-primary border-bottom pb-3 mb-4">
+                <i class="bi bi-shield-check me-2 small"></i>Aviso de Privacidad — Klinara
+            </h2>
+
+            <p class="lead text-muted">
+                Klinara (en lo sucesivo, "Klinara" o "el Responsable"), con plataforma web disponible en
+                <strong>@navigationManager.BaseUri</strong> y correo de contacto para privacidad
+                <a href="mailto:privacidad@klinara.com">privacidad@klinara.com</a>,
+                es responsable del tratamiento de los datos personales que se recaben o gestionen a través de su software web, conforme a la normatividad aplicable en materia de protección de datos personales.
+            </p>
+
+            <hr class="my-4" />
+
+            <h3 class="fw-bold text-primary mb-3">1. Datos personales que se recaban y tratan</h3>
+            <p class="text-muted">
+                A través de la plataforma web Klinara pueden tratarse las siguientes categorías de datos:
+            </p>
+
+            <ul class="list-unstyled ms-3">
+                <li class="mb-2"><strong>Datos de identificación y contacto:</strong> nombre completo, fecha de nacimiento, sexo/género, teléfono, correo electrónico, domicilio y contacto de emergencia.</li>
+                <li class="mb-2"><strong>Datos administrativos de atención:</strong> identificador de paciente, historial de citas, agenda, estatus de consulta, notas administrativas, facturas o comprobantes de pago.</li>
+                <li class="mb-2"><strong>Datos personales sensibles (datos de salud):</strong> motivo de consulta, antecedentes médicos y heredofamiliares, alergias, diagnósticos, estudios clínicos, recetas médicas, tratamientos, signos vitales y evolución clínica.</li>
+            </ul>
+
+            <h4 class="fw-bold text-warning mb-2 small">Tratamiento de datos sensibles</h4>
+            <p class="text-muted">
+                El tratamiento de datos de salud requiere consentimiento expreso (y por escrito o mediante los mecanismos electrónicos habilitados en la plataforma), salvo en los supuestos de excepción previstos por la ley.
+            </p>
+
+            <hr class="my-4" />
+
+            <h3 class="fw-bold text-primary mb-3">2. Finalidades del tratamiento</h3>
+
+            <h4 class="fw-bold text-success mb-2">Finalidades primarias (necesarias para el servicio):</h4>
+            <ul class="list-unstyled ms-3">
+                <li class="mb-1">Proveer, operar y mantener las funcionalidades del software web Klinara.</li>
+                <li class="mb-1">Registrar y administrar expedientes, agendas, citas y seguimiento clínico de los pacientes.</li>
+                <li class="mb-1">Facilitar la comunicación operativa relacionada con citas, resultados o atención médica solicitada.</li>
+                <li class="mb-1">Cumplir obligaciones legales, regulatorias o de seguridad de la información aplicables.</li>
+            </ul>
+
+            <h4 class="fw-bold text-info mb-2">Finalidades secundarias (no indispensables para el servicio principal):</h4>
+            <ul class="list-unstyled ms-3">
+                <li class="mb-1">Enviar encuestas de satisfacción o calidad del servicio.</li>
+                <li class="mb-1">Realizar análisis estadísticos anonimizados o agregados para mejorar el rendimiento y las funciones de Klinara (sin identificar a personas concretas).</li>
+                <li class="mb-1">Compartir novedades o mejoras del producto, cuando aplique y no exista oposición del titular.</li>
+            </ul>
+            <p class="text-muted small">
+                Si no deseas que tus datos se utilicen para finalidades secundarias, puedes indicarlo al momento de tu registro o enviar una solicitud a <a href="mailto:privacidad@klinara.com">privacidad@klinara.com</a>.
+            </p>
+
+            <hr class="my-4" />
+
+            <h3 class="fw-bold text-primary mb-3">3. Transferencias de datos personales</h3>
+            <p class="text-muted">
+                Los datos tratados en Klinara no se venden ni se comercializan. Podrán realizarse transferencias o comunicaciones de datos únicamente en los siguientes casos:
+            </p>
+            <ul class="list-unstyled ms-3">
+                <li class="mb-1">A proveedores de infraestructura tecnológica, alojamiento en la nube, respaldo o soporte técnico que actúan bajo obligaciones de confidencialidad y seguridad para operar la plataforma.</li>
+                <li class="mb-1">A profesionales, clínicas o instituciones de salud autorizadas o vinculadas a la atención del paciente, según la configuración y autorización correspondiente.</li>
+                <li class="mb-1">A autoridades competentes cuando lo exija una ley o resolución judicial.</li>
+            </ul>
+
+            <hr class="my-4" />
+
+            <h3 class="fw-bold text-primary mb-3">4. Medidas de seguridad y conservación</h3>
+            <p class="text-muted">
+                Klinara implementa medidas de seguridad administrativas, técnicas y físicas razonables para proteger los datos personales (en especial los datos de salud) contra daño, pérdida, alteración, destrucción o acceso no autorizado —tales como control de accesos por roles, cifrado en tránsito y respaldos—,
+                conservándolos durante el tiempo necesario para las finalidades descritas y los plazos legales o clínicos aplicables.
+            </p>
+
+            <hr class="my-4" />
+
+            <h3 class="fw-bold text-primary mb-3">5. Cómo ejercer tus derechos ARCO (Acceso, Rectificación, Cancelación y Oposición)</h3>
+            <p class="text-muted">
+                Como titular de los datos personales (o a través de tu representante legal), tienes derecho a:
+            </p>
+
+            <ul class="list-unstyled ms-3">
+                <li class="mb-1"><strong>Acceder</strong> a tus datos personales y conocer detalles sobre su tratamiento.</li>
+                <li class="mb-1"><strong>Rectificar</strong> tus datos cuando sean inexactos, incompletos o estén desactualizados.</li>
+                <li class="mb-1"><strong>Cancelar</strong> tus datos cuando consideres que no se requieren para las finalidades señaladas, se traten en contravención a la ley o haya finalizado la relación correspondiente (sujeto a los plazos de conservación legal o clínica aplicables).</li>
+                <li class="mb-1"><strong>Oponerse</strong> al tratamiento de tus datos para fines específicos o por causa legítima.</li>
+            </ul>
+
+            <h4 class="fw-bold text-secondary mb-3 small">Procedimiento vía correo electrónico:</h4>
+            <p class="text-muted small">
+                Envía un correo a <a href="mailto:privacidad@klinara.com">privacidad@klinara.com</a> con el asunto:
+                <strong>Solicitud de Derechos ARCO – Klinara</strong>.
+            </p>
+            <ul class="list-unstyled ms-3">
+                <li class="mb-1">Incluye en el cuerpo del correo:</li>
+                <ul class="list-unstyled ps-3">
+                    <li class="mb-1">Nombre completo del titular y medio para comunicar la respuesta (por lo general, el mismo correo electrónico).</li>
+                    <li class="mb-1">Copia o imagen de una identificación oficial vigente para acreditar tu identidad (y, si aplica, documento que acredite la representación legal y la identidad del representante).</li>
+                    <li class="mb-1">Descripción clara y precisa del derecho o derechos ARCO que deseas ejercer y de los datos involucrados.</li>
+                    <li class="mb-1">Cualquier elemento o documento que facilite la localización de los datos en el sistema (por ejemplo, clínica o profesional tratante y correo o teléfono registrado).</li>
+                    <li class="mb-1">En caso de rectificación, indica las modificaciones exactas a realizar y adjunta la documentación que respalde el cambio.</li>
+                </ul>
+                <li class="mb-1">Recibirás respuesta dentro de los plazos establecidos por la ley aplicable (en México, hasta 20 días hábiles para determinar la procedencia y, de ser procedente, hasta 15 días hábiles adicionales para hacerla efectiva), contados a partir de que la solicitud esté completa.</li>
+            </ul>
+
+            <div class="mt-4 p-3 bg-light rounded">
+                <h6 class="fw-bold mb-2"><i class="bi bi-info-circle me-1 text-primary"></i> Información</h6>
+                <p class="mb-0 small text-muted">
+                    Este aviso es un borrador de producto y debe completarse y revisarse por asesoría jurídica antes del lanzamiento. La legislación mexicana requiere informar, entre otros puntos, la identidad y domicilio del responsable, los datos tratados, las finalidades, las opciones para limitar su uso y los mecanismos para ejercer derechos ARCO.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string? ClinicSubdomain { get; set; }
+}

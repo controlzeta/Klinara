@@ -420,3 +420,7 @@ main.klinara-main article.content > h1 { margin: 0 0 20px; font-size: 28px; font
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
 }
+
+/* PersonalData form styling */
+.k-account-panel .form-row { margin-bottom: 1rem; }
+.k-account-panel .btn { font-size: 14px; padding: 8px 16px; }
