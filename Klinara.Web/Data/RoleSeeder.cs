@@ -86,6 +86,34 @@ public static class RoleSeeder
             }
         }
 
+        // Seed default work schedule (Mon-Fri 08:00-18:00) so the demo doctor
+        // can actually receive appointments. A doctor with no DoctorSchedule rows
+        // is rejected by ScheduleService.ValidateAppointmentAsync ("fuera del horario laboral").
+        if (!await context.DoctorSchedules.AnyAsync(ds => ds.DoctorId == doctor.Id && ds.ClinicId == clinic.Id))
+        {
+            for (var dow = DayOfWeek.Monday; dow <= DayOfWeek.Friday; dow++)
+            {
+                context.DoctorSchedules.Add(new DoctorSchedule
+                {
+                    Id = Guid.NewGuid(),
+                    ClinicId = clinic.Id,
+                    DoctorId = doctor.Id,
+                    DayOfWeek = dow,
+                    StartTime = TimeOnly.FromTimeSpan(TimeSpan.FromHours(8)),
+                    EndTime = TimeOnly.FromTimeSpan(TimeSpan.FromHours(18)),
+                    LunchStart = null,
+                    LunchEnd = null,
+                    SlotDurationMinutes = 30,
+                    IsActive = true,
+                    EffectiveFrom = new DateTime(2026, 1, 1),
+                    EffectiveTo = null,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                });
+            }
+            await context.SaveChangesAsync();
+        }
+
         // 4. Employee: Empleadito in Clinica de Prueba
         const string employeeEmail = "empleadito@clinica-prueba.com";
         var employee = await userManager.FindByEmailAsync(employeeEmail);

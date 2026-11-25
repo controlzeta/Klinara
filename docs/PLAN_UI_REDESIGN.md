@@ -16,6 +16,8 @@ Aplicar un sistema visual coherente a todas las pantallas del MVP, manteniendo l
 - El contenido utiliza Bootstrap y `app.css` todavía declara Helvetica Neue y el azul predeterminado. `App.razor` declara `lang="en"`, no enlaza el sistema visual de Klinara y `MainLayout` aún contiene el enlace de plantilla “About”.
 - El portal ya tiene `PatientPortalLayout`, con estructura diferente al shell administrativo. Debe compartir tokens y tema, no forzarse a usar la navegación del personal.
 - Las pantallas de Identity/Manage pertenecen al mismo alcance visual; las mejoras deben llegar por estilos globales/layouts compartidos sin alterar sus formularios ni handlers.
+- Auditoría de navegador en `/Account/Login`: el CSS fingerprinted de Klinara sí carga, pero el sidebar conserva el degradado de plantilla porque `MainLayout` no usa `.klinara-shell`/`.klinara-sidebar`; no hay selector de tema ni script conectado y el documento aún declara `lang="en"`.
+- El árbol de Account tiene 31 rutas (acceso/recuperación/confirmación y 14 de administración de cuenta); el menú de Manage y la mayoría de sus textos siguen en inglés. Las vistas protegidas de Manage se auditaron por código, no con sesión autenticada.
 - Hay cambios locales previos en servicios, controladores, seeder y documentación. Se preservan y no se mezclan con la fase visual.
 
 ## Inventario de pantallas

@@ -1,6 +1,6 @@
 # PRD Compliance Checklist — Klinara
 
-> **Estado vigente:** consulta la [auditoría actualizada](PRD_COMPLIANCE_AUDIT_2026-11-24.md). El contenido siguiente refleja el estado tras la corrección de bloqueos de Fase 3 (2026-11-25).
+> **Estado vigente:** consulta la [auditoría actualizada](PRD_COMPLIANCE_AUDIT_2026-11-24.md). El contenido siguiente refleja el estado tras corrección Fase 3 + aviso privacidad + traducciones español (2026-11-25).
 
 ## ✅ FASE 1 COMPLETA — Infraestructura y Auth
 
@@ -54,28 +54,35 @@
 - ✅ Email confirmación: URL incluye subdominio `/portal/{subdomain}/confirm/{token}`
 - ✅ Playwright E2E: proyecto `Klinara.E2E` con 9 tests (páginas + API)
 - ✅ Warnings nullable tests: reducidos 45→9 (`CreatePatient` `string? email`)
+- ✅ Aviso de privacidad: página `/privacy` + enlaces en footers (admin + portal)
 
 **Pendientes menores:**
 - 🔒 Headers de seguridad para tokens en URL (referrer-policy, CSP)
 - 📱 UI mobile-first / design system / accesibilidad (Fase 7)
 
-## 🔴 FASE 4 PENDIENTE — Pagos y Reportes
+## 🟡 FASE 4 EN PROGRESO — Pagos y Reportes
 
 | Requisito PRD | Estado | Evidencia / Falta |
 |---|---|---|
-| **Modelo de pago manual** | ❌ | No hay entidad `Payment` |
-| **Registrar pago: monto, fecha, método (efectivo, tarjetas, SPEI), concepto** | ❌ | |
-| **Saldo pendiente: captura manual; saldo real = total adeudado - abonos** | ❌ | |
-| **Reportes por paciente y consultorio** | ❌ | |
+| **Modelo de pago manual** | ✅ | Entidad `Payment` con Amount, PaidAt, Method (enum: Cash/CreditCard/DebitCard/SPEI/Other), Concept, Notes |
+| **Registrar pago: monto, fecha, método (efectivo, tarjetas, SPEI), concepto** | ✅ | `IPaymentService.RegisterPaymentAsync` + `PaymentsController.POST` + `StaffPayments.razor` modal |
+| **Saldo pendiente: captura manual; saldo real = total adeudado - abonos** | ✅ | `Patient.TotalDue` - `Payments.Sum(Amount)` en `GetPatientBalanceAsync` |
+| **Aislamiento por clínica** | ✅ | Controller valida `ClinicId` del usuario vs request; Service filtra por `requestingClinicId` |
+| **Reportes por paciente y consultorio** | 🟡 | UI lista pagos con filtro por paciente; **falta exportación CSV/Excel/PDF** |
 
----
+**Implementado (2026-11-25):**
+- ✅ EF Migration `20261125162638_InitialCreate` incluye tabla `Payments` con FKs
+- ✅ 2 tests unitarios en `PaymentServiceTests`
+- ✅ Controller con autorización `EmployeeOrAbove` y validación de clínica
 
 ## 🔴 FASE 5 PENDIENTE — Privacidad y Cumplimiento
 
 | Requisito PRD | Estado | Evidencia / Falta |
 |---|---|---|
-| **Aviso de privacidad final (jurídico)** | ❌ | Pendiente |
-| **Procedimiento ARCO implementado** | ❌ | |
+| **Aviso de privacidad final (jurídico)** | ❌ | Pendiente revisión legal |
+| **Página de aviso de privacidad implementada** | ✅ | `PatientPortal/Pages/Privacy.razor` con 5 secciones (datos, finalidades, transferencias, seguridad, ARCO) |
+| **Enlace a aviso en footers** | ✅ | `NavMenu.razor` (admin) + `PatientPortalLayout.razor` (portal) → `/privacy` |
+| **Procedimiento ARCO implementado** | ❌ | Falta endpoint/proceso para solicitudes |
 | **Datos sensibles revisados** | ❌ | MVP no almacena expedientes clínicos (OK) |
 | **Datos clínicos fuera del MVP** | ✅ | Modelo no incluye expedientes |
 
@@ -100,6 +107,11 @@
 | **Mockup conectado a datos reales** | ❌ | |
 | **Accesibilidad básica** | ❌ | |
 | **Navegación entre módulos** | ❌ | |
+| **Idioma español en UI** | ✅ | Páginas Account traducidas (labels, placeholders, validaciones, botones); regla en `.cursorrules` |
+
+**Implementado (2026-11-25):**
+- ✅ Textos Account traducidos al español (`Login`, `Register`, `ForgotPassword`, `ResetPassword`, `Manage/*`)
+- ✅ Regla en `.cursorrules`: "Todos los textos de UI DEBEN estar en español"
 
 ---
 
@@ -132,10 +144,10 @@
 
 | Requisito | Estado |
 |---|---|
-| Aviso de privacidad por consultorio | ❌ Pendiente |
+| Aviso de privacidad por consultorio | 🟡 Página implementada (`/privacy`); pendiente revisión legal y personalización por clínica |
 | Datos sensibles (expedientes) fuera del MVP | ✅ Modelo no incluye |
-| Derechos ARCO | ❌ Pendiente |
-| Domicilio/responsable en aviso | ❌ Pendiente |
+| Derechos ARCO | 🟡 Documentados en aviso; falta implementación proceso |
+| Domicilio/responsable en aviso | 🟡 Placeholder en borrador; requiere completado legal |
 
 ---
 
@@ -143,11 +155,11 @@
 
 | Flujo | Estado |
 |---|---|
-| **Flujo 1:** Login → Alta paciente → Reserva cita → Pago manual → Dashboard | 🟡 20% (Login ✅, Alta paciente modelo ✅, Reserva ❌, Pago ❌, Dashboard ❌) |
-| **Flujo 2:** Cancelación <24h → Marca impuntualidad → 3 marcas bloquean | 🟡 40% (Modelo ✅, Servicio cancelación ❌, Contador ✅, Bloqueo ❌) |
-| **Flujo 3:** No-show → Marca independiente | 🟡 50% (Modelo ✅, Servicio no-show ❌) |
-| **No funcionales:** Build 0 errores, zona horaria, mobile-first | 🟡 60% (Build ✅, Zona horaria modelo ✅, Mobile-first ❌) |
-| **Playwright 75%** | ❌ 0% |
+| **Flujo 1:** Login → Alta paciente → Reserva cita → Pago manual → Dashboard | 🟡 80% (Login ✅, Alta paciente ✅, Reserva ✅, Pago ✅, Dashboard ❌) |
+| **Flujo 2:** Cancelación <24h → Marca impuntualidad → 3 marcas bloquean | 🟡 70% (Modelo ✅, Servicio ✅, Contador ✅, Bloqueo ✅, aislamiento ⚠️) |
+| **Flujo 3:** No-show → Marca independiente | 🟡 70% (Modelo ✅, Servicio ✅, aislamiento ⚠️) |
+| **No funcionales:** Build 0 errores, zona horaria, mobile-first | 🟡 70% (Build ✅, Zona horaria modelo ✅, Mobile-first ❌) |
+| **Playwright ≥75%** | 🟡 20% (Proyecto creado, tests escritos, requieren app corriendo) |
 
 ---
 
@@ -156,45 +168,44 @@
 | Fase | % Completo | Comentario |
 |---|---|---|
 | **Fase 1** | **95%** | Solo falta email real y validación móvil |
-| **Fase 2** | **40%** | Modelo completo, faltan servicios de negocio |
-| **Fase 3** | **15%** | Solo modelos |
-| **Fase 4** | **0%** | Sin entidad Payment |
-| **Fase 5** | **10%** | Solo decisión de no expedientes |
+| **Fase 2** | **85%** | Modelo + servicios completos, aislamiento por clínica ⚠️ |
+| **Fase 3** | **80%** | Portal funcional; bloqueos de auditoría resueltos; UI Fase 7 pendiente |
+| **Fase 4** | **70%** | Entidad + servicio + controller + UI + tests; falta exportación reportes |
+| **Fase 5** | **25%** | Página aviso + footers; pendiente revisión legal y proceso ARCO |
 | **Fase 6** | **5%** | Solo decisión WhatsApp obligatorio |
-| **Fase 7** | **0%** | Sin UI |
-| **Fase 8** | **5%** | Solo tests unitarios |
+| **Fase 7** | **0%** | Sin UI design system / mobile-first |
+| **Fase 8** | **40%** | 91 tests unitarios + E2E proyecto; CI/deploy pendiente |
 
 ---
 
 ## 🎯 PRÓXIMAS ACCIONES PRIORITARIAS (Orden PRD)
 
-1. **Fase 2 - Servicios de agenda** (`AppointmentService`, `ScheduleService`, `SlotGenerator`)
-   - Validación traslapes, horizonte 45d, exclusión festivos/vacaciones
-   - Generador de `TimeSlot` desde `DoctorSchedule` excluyendo `ClinicHoliday`/`DoctorVacation`
+1. **Fase 2 - Aislamiento por clínica extremo a extremo**
+   - Verificar `ClinicId` en todos los controllers/servicios vs usuario autenticado
+   - Tests de integración para aislamiento
 
-2. **Fase 2 - Cancelación y No-show**
-   - `CancelAppointmentAsync` con validación <24h → `IsLateCancellation` + `Patient.LateCancellationCount++`
-   - `MarkNoShowAsync` → `IsNoShow` + `Patient.NoShowCount++`
-   - `UnblockPatientAsync` (solo roles `EmployeeOrAbove`)
+2. **Fase 3 - Hardening seguridad tokens**
+   - Referrer-Policy, CSP headers para páginas con tokens en URL
+   - Log redaction de tokens bearer
 
-3. **Fase 2 - Generador de slots**
-   - Job semanal/diario que crea `TimeSlot` desde `DoctorSchedule`
-   - Excluye `ClinicHoliday`, `DoctorVacation`, slots ya reservados/bloqueados
+3. **Fase 3 - UI mobile-first / design system (Fase 7)**
+   - Integrar `UI_DESIGN_SYSTEM.md` en `PatientPortalLayout` y páginas
+   - `lang="es"` en `App.razor`
+   - Accesibilidad básica (ARIA, contraste, focus)
 
-4. **Fase 3 - Portal paciente**
-   - Endpoint público `/patient/booking` con verificación email (OTP)
-   - `PatientToken` tipo `PortalAccess` / `AppointmentConfirmation`
-   - Login paciente sin IdentityUser (token-based)
+4. **Fase 4 - Reportes** (bloqueante para Flujo 1 completo)
+   - Exportación CSV/Excel/PDF de pagos por paciente y clínica
+   - Dashboard de saldos y cobranza
 
-5. **Fase 4 - Pagos**
-   - Entidad `Payment` + `PaymentMethod` enum
-   - `Patient.Balance` computado (total - abonos)
+5. **Fase 6 - Notificaciones**
+   - Proveedor WhatsApp (Twilio/Gupshup) + templates
+   - `SmtpEmailSender` configuración producción
+   - Recordatorios 24h (job background)
 
-6. **Fase 6 - Notificaciones**
-   - Seleccionar proveedor WhatsApp (Twilio/Gupshup)
-   - Implementar `IEmailSender` real (SendGrid/SMTP)
-   - Plantillas: confirmación, recordatorio 24h, alerta cancelación
+6. **Fase 8 - CI/CD y E2E real**
+   - Pipeline: build → test → Playwright contra app levantada
+   - Deploy checklist + documentación usuario
 
 ---
 
-*Generado: 2026-11-23 | Basado en PRD.md v1.0 y código actual*
+*Actualizado: 2026-11-25 | Basado en PRD.md v1.0, código actual (build ✅, 91 tests ✅, Fase 3 bloqueos resueltos, Fase 4 pagos implementados, aviso privacidad + footers + textos español)*
