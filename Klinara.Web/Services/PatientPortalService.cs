@@ -223,27 +223,37 @@ public class PatientPortalService : IPatientPortalService
             }
 
             // Verificar que el doctor pertenece a la clínica
-            var doctor = await _context.Users
-                .FirstOrDefaultAsync(u => u.Id == dto.DoctorId && u.ClinicId == patient.ClinicId);
+                        var doctor = await _context.Users
+                            .FirstOrDefaultAsync(u => u.Id == dto.DoctorId && u.ClinicId == patient.ClinicId);
 
-            if (doctor == null)
-            {
-                return new PortalBookingResult(false, Error: ErrorCodes.DoctorNotFoundInClinic);
-            }
+                        if (doctor == null)
+                        {
+                            return new PortalBookingResult(false, Error: ErrorCodes.DoctorNotFoundInClinic);
+                        }
 
-            // Crear cita usando AppointmentService (validaciones incluidas: horizonte 45d, traslapes, etc.)
-            var appointment = new Appointment
-            {
-                ClinicId = patient.ClinicId,
-                DoctorId = dto.DoctorId,
-                PatientId = patient.Id,
-                StartAt = dto.StartAt,
-                EndAt = dto.EndAt,
-                Type = dto.Type,
-                Notes = dto.Notes,
-                CreatedByUserId = patient.Id, // El paciente es quien crea
-                Status = AppointmentStatus.Scheduled
-            };
+                        // Buscar el usuario portal (ApplicationUser) para usar su ID en CreatedByUserId
+                        var portalUser = await _context.Users
+                            .FirstOrDefaultAsync(u => u.Email == patient.Email && u.ClinicId == patient.ClinicId);
+
+                        if (portalUser == null)
+                        {
+                            _logger.LogError("Usuario portal no encontrado para PatientId: {PatientId}, Email: {Email}, ClinicId: {ClinicId}", patient.Id, patient.Email, patient.ClinicId);
+                            return new PortalBookingResult(false, Error: "Error de configuración del paciente");
+                        }
+
+                        // Crear cita usando AppointmentService (validaciones incluidas: horizonte 45d, traslapes, etc.)
+                        var appointment = new Appointment
+                        {
+                            ClinicId = patient.ClinicId,
+                            DoctorId = dto.DoctorId,
+                            PatientId = patient.Id,
+                            StartAt = dto.StartAt,
+                            EndAt = dto.EndAt,
+                            Type = dto.Type,
+                            Notes = dto.Notes,
+                            CreatedByUserId = portalUser.Id, // Usar ID del usuario portal (ApplicationUser)
+                            Status = AppointmentStatus.Scheduled
+                        };
 
             // Usar el método extendido para portal (isPatientBooking = true)
             var result = await _appointmentService.CreateAppointmentAsync(appointment, isPatientBooking: true);
@@ -582,9 +592,10 @@ public class PatientPortalService : IPatientPortalService
     }
 
     private async Task SendAppointmentConfirmationEmailAsync(string email, string confirmationToken, Appointment appointment, string doctorName)
-    {
-        var baseUrl = _configuration["PatientPortal:BaseUrl"] ?? "https://localhost:5000";
-        var confirmUrl = $"{baseUrl}/portal/confirm/{confirmationToken}";
+        {
+            var baseUrl = _configuration["PatientPortal:BaseUrl"] ?? "https://localhost:5000";
+            var subdomain = appointment.Clinic?.Subdomain ?? "";
+            var confirmUrl = $"{baseUrl}/portal/{subdomain}/confirm/{confirmationToken}";
 
         var subject = $"Confirma tu cita - {appointment.Clinic?.Name ?? "Klinara"}";
         var body = $@"

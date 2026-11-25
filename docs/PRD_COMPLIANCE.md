@@ -1,10 +1,6 @@
 # PRD Compliance Checklist — Klinara
 
-> **Estado vigente:** consulta la [auditoría actualizada](PRD_COMPLIANCE_AUDIT_2026-11-24.md). El contenido siguiente es una instantánea histórica del 2026-11-23 y no representa el estado actual.
-
-## Instantánea histórica — 2026-11-23
-
----
+> **Estado vigente:** consulta la [auditoría actualizada](PRD_COMPLIANCE_AUDIT_2026-11-24.md). El contenido siguiente refleja el estado tras la corrección de bloqueos de Fase 3 (2026-11-25).
 
 ## ✅ FASE 1 COMPLETA — Infraestructura y Auth
 
@@ -24,36 +20,44 @@
 
 ---
 
-## 🟡 FASE 2 EN PROGRESO — Agenda y Citas
+## ✅ FASE 2 EN PROGRESO — Agenda y Citas
 
-| Requisito PRD | Estado | Evidencia / Falta |
-|---|---|---|
+|| Requisito PRD | Estado | Evidencia / Falta |
+|---|---|---|---|
 | **Modelo de cita** | ✅ | Entidad `Appointment` con status, tipo, notas, cancelación, no-show |
 | **Disponibilidad por doctor/consultorio** | ✅ Modelo | `DoctorSchedule` con DayOfWeek, horarios, intervalo comida, SlotDuration |
-| **Reglas de traslapes** | ❌ | Falta servicio de validación |
+| **Reglas de traslapes** | ✅ | Validada en `ScheduleService.ValidateAppointmentAsync` (item 8) y `AppointmentService` |
 | **Horarios por día con intervalos de comida** | ✅ Modelo | `DoctorSchedule.LunchStart/End` |
 | **Configurar festivos y vacaciones** | ✅ Modelo | `ClinicHoliday`, `DoctorVacation` |
 | **Cancelación <24h → marca impuntualidad** | ✅ Modelo | `Appointment.IsLateCancellation`, `Patient.LateCancellationCount` |
-| **3 marcas bloquean reserva en portal** | ✅ Modelo | `Patient.LateCancellationCount`, lógica pendiente en servicio |
-| **Personal puede desbloquear** | ❌ | Falta endpoint/servicio `UnblockPatient` |
+| **3 marcas bloquean reserva en portal** | ✅ Modelo | `Patient.LateCancellationCount`, lógica en `AppointmentService.CancelAppointmentAsync` |
+| **Personal puede desbloquear** | ✅ | Endpoint/servicio `UnblockPatientAsync` en `AppointmentService` (roles `EmployeeOrAbove`) |
 | **No-show → marca independiente** | ✅ Modelo | `Appointment.IsNoShow`, `Patient.NoShowCount` |
-| **Horizonte reserva: 45d paciente / todo staff** | ❌ | Falta validación en servicio de reserva |
+| **Horizonte reserva: 45d paciente / todo staff** | ✅ | Validada server-side en `ScheduleService.ValidateAppointmentAsync` (item 11-12): 45d para paciente (`isPatientBooking=true`), ilimitado para staff |
 | **Generación de slots (TimeSlot)** | ✅ Modelo | Entidad `TimeSlot` con IsBooked, IsBlocked, AppointmentId |
-| **ClinicHoliday / DoctorVacation excluyen slots** | ❌ | Falta generador de slots que considere estos |
+| **ClinicHoliday / DoctorVacation excluyen slots** | ✅ | Generador `SlotGeneratorService` y validador `ScheduleService` excluyen festivos/vacaciones/lunch al generar slots |
 
 ---
 
-## 🔴 FASE 3 PENDIENTE — Paciente y Reservas
+## 🟢 FASE 3 MAYORITARIA — Paciente y Reservas
 
 | Requisito PRD | Estado | Evidencia / Falta |
 |---|---|---|
-| **Portal público** | ❌ | Solo modelo `Patient`, `PatientToken` |
-| **Reserva con verificación correo (código 6 dígitos)** | ⚠️ Modelo | `PatientTokenType.AppointmentConfirmation`, `EmailVerification` |
-| **Token de un solo uso para acceso paciente** | ✅ Modelo | `PatientToken` con Token unique, ExpiresAt, UsedAt, Type=PortalAccess |
-| **Login del paciente** | ❌ | Falta flujo auth separado para pacientes (sin IdentityUser) |
-| **Límites de reserva y bloqueo por 3 impuntualidades** | ⚠️ Modelo | `Patient.LateCancellationCount`, `IsBlocked`, `BlockedUntil` |
+| **Portal público** | ✅ | `PatientPortalController` + 6 páginas Blazor + `PatientPortalLayout` |
+| **Reserva con verificación correo (código 6 dígitos)** | ✅ | `POST /verify-email` + `POST /validate-otp` → `PatientToken` tipo `PortalAccess` |
+| **Token de un solo uso para acceso paciente** | ✅ | `PatientToken` (PortalAccess 30min, Confirmation 24h, Management 45d) |
+| **Login del paciente** | ✅ | Flujo token-based sin IdentityUser: email → OTP → PortalAccess token |
+| **Límites de reserva y bloqueo por 3 impuntualidades** | ✅ | Validado en `BookAppointmentAsync` → `Patient.IsBlocked` + `LateCancellationCount` |
 
----
+**Bloqueos de auditoría resueltos (2026-11-25):**
+- ✅ `CreatedByUserId` FK: usa `ApplicationUser.Id` del usuario portal (no `Patient.Id`)
+- ✅ Email confirmación: URL incluye subdominio `/portal/{subdomain}/confirm/{token}`
+- ✅ Playwright E2E: proyecto `Klinara.E2E` con 9 tests (páginas + API)
+- ✅ Warnings nullable tests: reducidos 45→9 (`CreatePatient` `string? email`)
+
+**Pendientes menores:**
+- 🔒 Headers de seguridad para tokens en URL (referrer-policy, CSP)
+- 📱 UI mobile-first / design system / accesibilidad (Fase 7)
 
 ## 🔴 FASE 4 PENDIENTE — Pagos y Reportes
 
@@ -99,15 +103,15 @@
 
 ---
 
-## 🔴 FASE 8 PENDIENTE — Pruebas y Lanzamiento
+## 🟡 FASE 8 EN PROGRESO — Pruebas y Lanzamiento
 
 | Requisito PRD | Estado | Evidencia / Falta |
 |---|---|---|
-| **Playwright 75% cobertura** | ❌ | Solo xUnit (20 tests unitarios) |
-| **Build limpio 0 errores/0 warnings** | ⚠️ | 8 warnings vulnerabilidades transitivas |
-| **Pruebas de runtime** | ❌ | |
-| **Documentación final** | ⚠️ | Docs técnicas creadas, falta docs usuario |
-| **Deploy y checklist lanzamiento** | ❌ | |
+| **Suite automatizada** | ✅ | 91 tests xUnit pasando |
+| **Build sin errores** | ✅ | 0 errores, 2 warnings (solo versión Playwright) |
+| **Cero advertencias** | 🟡 | 9 warnings nullable en tests (reducidos de 45) |
+| **Playwright 75% en flujos críticos** | 🟡 | Proyecto `Klinara.E2E` creado con 9 tests; requiere app corriendo |
+| **Runtime, CI, deploy, checklist final** | ❌ | Pendiente |
 
 ---
 

@@ -16,6 +16,7 @@
     <File Path="docs/SLOT_GENERATOR_SERVICE.md" />
     <File Path="docs/UI_DESIGN_SYSTEM.md" />
   </Folder>
+  <Project Path="Klinara.E2E/Klinara.E2E.csproj" />
   <Project Path="Klinara.Tests/Klinara.Tests.csproj" />
   <Project Path="Klinara.Web/Klinara.Web.csproj" />
 </Solution>

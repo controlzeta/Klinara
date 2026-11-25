@@ -1,0 +1,205 @@
+# Klinara .cursorrules - Reglas y Buenas Prácticas del Repositorio
+
+## Arquitectura y Patrones
+
+### 1. Multi-Tenant por ClinicId
+- **SIEMPRE** filtrar por `ClinicId` del usuario autenticado en queries
+- `ApplicationUser.ClinicId` es `Guid?` - `null` = PlatformAdmin (acceso global)
+- Roles scoped: `AdminClinica`, `Doctor`, `Empleado` requieren `ClinicId`
+- PlatformAdmin (`AdminPlataforma`) tiene `ClinicId = null` y bypass global
+
+### 2. Identity con Guid
+```csharp
+// ApplicationUser hereda de IdentityUser<Guid>
+public class ApplicationUser : IdentityUser<Guid>
+
+// DbContext usa IdentityRole<Guid>
+public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>
+```
+
+### 3. Roles y Políticas (KlinaraRoles / KlinaraPolicies)
+```csharp
+// 4 roles fijos
+PlatformAdmin = "AdminPlataforma"
+ClinicAdmin   = "AdminClinica"
+Doctor        = "Doctor"
+Employee      = "Empleado"
+
+// Políticas jerárquicas
+PlatformAdminOnly     // solo PlatformAdmin
+ClinicAdminOrAbove    // ClinicAdmin + PlatformAdmin
+DoctorOrAbove         // Doctor + ClinicAdmin + PlatformAdmin
+EmployeeOrAbove       // todos los roles clínicos
+CanManageUsers        // ClinicAdmin + PlatformAdmin
+```
+
+## Migraciones EF Core
+
+### Reglas Críticas
+- **NUNCA** usar `AlterColumn` en migraciones posteriores para cambiar tipos de Identity (string ↔ Guid)
+- La migración `CreateIdentitySchema` DEBE crear todas las tablas Identity con `Guid` (`uniqueidentifier`) desde el inicio
+- Tablas afectadas: `AspNetUsers`, `AspNetRoles`, `AspNetUserTokens`, `AspNetUserLogins`, `AspNetUserClaims`, `AspNetUserRoles`, `AspNetUserPasskeys`, `AspNetRoleClaims`
+- Si hay error de FK/PK al hacer `AlterColumn`, borrar BD y recrear migración inicial limpia
+
+### Secuencia Correcta
+```powershell
+# 1. Drop BD
+dotnet ef database drop --force
+
+# 2. Borrar migraciones existentes
+rm Migrations/*.cs
+
+# 3. Corregir CreateIdentitySchema.cs con Guid en todas las tablas Identity
+
+# 4. Scaffold migración única
+dotnet ef migrations add InitialCreate
+
+# 5. Update
+dotnet ef database update
+```
+
+## Testing (TDD Obligatorio)
+
+### Ciclo RED-GREEN-REFACTOR
+1. **RED**: Escribir test que falle ANTES de implementar
+2. **GREEN**: Código mínimo para pasar
+3. **REFACTOR**: Limpiar manteniendo tests verdes
+
+### Patrones de Test
+```csharp
+// InMemory DB por test (nombre único = método)
+await using var context = new ApplicationDbContext(options);
+
+// Test fixtures para services
+private sealed class TestFixture : IAsyncDisposable {
+    public UserManager<ApplicationUser> UserManager { get; }
+    public IUserAdministrationService Administration { get; }
+    // ... helper methods CreateUserAsync, CreateClinicAsync
+}
+```
+
+### Naming de Tests
+- `MethodName_Scenario_ExpectedResult`
+- Ej: `ChangeRoleAsync_PlatformAdminChangesRoleAndClinic`
+
+## Servicios y Reglas de Negocio
+
+### PatientPortalService
+- **Solo** `EmailVerification` purpose para OTP portal (nunca `Login` + `EmailVerification`)
+- Tokens: `PortalAccess` (30min, single-use), `AppointmentConfirmation` (24h), `AppointmentManagement` (45d)
+- Validar horizonte 45d paciente / ilimitado staff en `ScheduleService`
+- Bloqueo 3 strikes validado server-side
+
+### AppointmentService
+- Cancelación <24h = `IsLateCancellation` + `LateCancellationCount++`
+- 3 strikes → `IsBlocked = true`, `BlockedUntil = +3 meses`
+- No-show independiente (no suma a impuntualidad)
+- `UnblockPatientAsync` resetea contador y bloqueo
+
+### UserAdministrationService
+- Solo PlatformAdmin/ClinicAdmin pueden cambiar roles
+- ClinicAdmin solo en su clínica
+- No auto-remover rol ni quitar último PlatformAdmin
+- Invalidar security stamp tras cambio de rol
+
+## Convenciones de Código
+
+### C# / .NET
+- `nullable: enable` en todo el proyecto
+- `record` para DTOs y resultados
+- `async`/`await` siempre, no `.Result` ni `.Wait()`
+- `CancellationToken` en métodos async públicos
+- Logging con Serilog + CorrelationId, **NUNCA** loguear OTPs/tokens
+
+### Razor / Blazor
+- `@rendermode InteractiveServer` solo en páginas interactivas
+- `@attribute [AllowAnonymous]` para páginas públicas (portal paciente)
+- `@using` en `_Imports.razor` o en cada archivo
+- `AuthorizeView` con `<Authorized>` / `<NotAuthorized>` / `<AuthorizeView Policy="...">`
+
+### SQL / EF Core
+- Índices en FKs y columnas de filtro frecuente (`ClinicId`, `StartAt`, `Status`)
+- `OnDelete(DeleteBehavior.Restrict)` para FKs de auditoría
+- `HasIndex(e => e.Token).IsUnique()` para tokens
+- `TimeZoneId` como string (IANA), propiedad `TimeZone` NotMapped
+
+## Seguridad
+
+### OTP / Auth
+- 6 dígitos, 1 hora vigencia
+- Lockout: 5 intentos / 15 min
+- `LoggingEmailSender` en dev (no loguea OTP)
+- `SmtpEmailSender` en prod (config via user-secrets/env vars)
+- SecurityStamp rotation invalida tokens previos
+
+### Claims y Autorización
+- `ClinicId` claim para usuarios clínicos
+- `SameClinicOnly` policy valida claim o PlatformAdmin
+- `AuthorizeView Policy="CanManageUsers"` para UI condicional
+
+## Estructura de Archivos
+
+```
+Klinara.Web/
+├── Components/
+│   ├── Layout/NavMenu.razor        # Nav principal + logout
+│   ├── PatientPortal/Pages/        # Portal público (AllowAnonymous)
+│   └── Pages/Staff*.razor          # Staff pages (Authorize)
+├── Controllers/
+│   ├── PatientPortalController.cs  # API pública [AllowAnonymous]
+│   └── *Controller.cs              # Staff APIs [Authorize]
+├── Services/
+│   ├── *Service.cs                 # Lógica de negocio
+│   └── I*Service.cs                # Interfaces
+├── Data/
+│   ├── Migrations/                 # Solo migraciones limpias
+│   └── *Entities.cs                # Entidades EF
+└── Authorization/
+    ├── KlinaraRoles.cs
+    └── KlinaraPolicies.cs
+
+Klinara.Tests/
+├── *ServiceTests.cs                # Tests unitarios xUnit + InMemory
+├── TenantIsolationTests.cs         # Tests multi-tenant
+└── TestFixture pattern             # DI + helpers
+```
+
+## Errores Comunes a Evitar
+
+| ❌ Error | ✅ Solución |
+|----------|-------------|
+| `AlterColumn` Guid en Identity posterior | Crear migración inicial con Guid |
+| `ReturnUrl="/"` en logout | Usar `ReturnUrl="~/"` |
+| `AlterColumn` AspNetUserTokens.UserId | PK/FK ya existen, no se puede alterar |
+| OTP `Login` + `EmailVerification` mixto | Solo `EmailVerification` para portal |
+| `ClinicId` string en claims | Usar `Guid` y `Guid.TryParse` |
+| `AuthorizeView` sin policy | Usar `Policy="CanManageUsers"` |
+| Log OTP/token | Solo metadata, nunca el valor |
+
+## Comandos Útiles
+
+```powershell
+# Build + tests
+dotnet build Klinara.slnx --no-restore -p:UseAppHost=false
+dotnet test Klinara.slnx --no-restore
+
+# Migraciones
+dotnet ef migrations add Nombre --project Klinara.Web --startup-project Klinara.Web
+dotnet ef database update --project Klinara.Web --startup-project Klinara.Web
+dotnet ef database drop --force
+
+# SQL local (site4now)
+sqlcmd -S "$ENV:TOMIN_SQLSERVER" -d "$ENV:TOMIN_SQLDB" -U "$ENV:TOMIN_SQLUSER" -P "$ENV:TOMIN_SQLCMDPASSWORD" -C -i script.sql
+
+# Tests filtrados
+dotnet test --filter "FullyQualifiedName~NombreTest"
+```
+
+## Referencias Rápidas
+
+- **PRD**: `docs/PRD.md`
+- **Compliance actual**: `docs/PRD_COMPLIANCE_AUDIT_2026-11-24.md`
+- **Plan Fase 3**: `docs/PLAN_FASE3_PATIENT_PORTAL.md`
+- **Diseño UI**: `docs/UI_DESIGN_SYSTEM.md`
+- **Roles/Policies**: `docs/ROLES_POLICIES.md`
+- **Script admin**: `docs/asignar-admin-plataforma.sql`

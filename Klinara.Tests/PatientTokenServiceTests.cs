@@ -42,7 +42,7 @@ public class PatientTokenServiceTests
         };
     }
 
-    private static Patient CreatePatient(Guid clinicId, Guid userId, string name, string email)
+    private static Patient CreatePatient(Guid clinicId, Guid userId, string name, string? email)
     {
         return new Patient
         {
