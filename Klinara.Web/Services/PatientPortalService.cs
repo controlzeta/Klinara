@@ -574,45 +574,35 @@ public class PatientPortalService : IPatientPortalService
     // Métodos privados auxiliares
 
     private async Task SendOtpEmailAsync(string email, string otpCode, string clinicName)
-    {
-        var subject = $"Tu código de verificación - {clinicName}";
-        var body = $@"
-            <h2>Verificación de correo - {clinicName}</h2>
-            <p>Tu código de verificación de 6 dígitos es:</p>
-            <h1 style='letter-spacing: 4px; font-family: monospace; color: #155EEF;'>{otpCode}</h1>
-            <p>Este código expira en 1 hora.</p>
-            <p>Si no solicitaste este código, ignora este correo.</p>
-        ";
+        {
+            var user = new ApplicationUser { Email = email, UserName = email };
+            // Envía el código OTP de verificación usando la plantilla Klinara
+            await _emailSender.SendPasswordResetCodeAsync(user, email, otpCode);
+        }
 
-        // Usar el email sender configurado (SmtpEmailSender en prod)
-        var user = new ApplicationUser { Email = email, UserName = email };
-        // Envía el código OTP de verificación usando el método de reset de contraseña
-        // (el código de 6 dígitos es el mismo para verificación o reset)
-        await _emailSender.SendPasswordResetCodeAsync(user, email, otpCode);
-    }
-
-    private async Task SendAppointmentConfirmationEmailAsync(string email, string confirmationToken, Appointment appointment, string doctorName)
+        private async Task SendAppointmentConfirmationEmailAsync(string email, string confirmationToken, Appointment appointment, string doctorName)
         {
             var baseUrl = _configuration["PatientPortal:BaseUrl"] ?? "https://localhost:5000";
             var subdomain = appointment.Clinic?.Subdomain ?? "";
             var confirmUrl = $"{baseUrl}/portal/{subdomain}/confirm/{confirmationToken}";
+            var clinicName = appointment.Clinic?.Name ?? "Klinara";
+            var patientName = appointment.Patient?.FullName ?? "Paciente";
+            var duration = appointment.EndAt - appointment.StartAt;
 
-        var subject = $"Confirma tu cita - {appointment.Clinic?.Name ?? "Klinara"}";
-        var body = $@"
-            <h2>Confirmación de cita</h2>
-            <p>Hola {appointment.Patient?.FullName ?? "Paciente"},</p>
-            <p>Has reservado una cita con <strong>{doctorName}</strong>.</p>
-            <p><strong>Fecha y hora:</strong> {appointment.StartAt:dddd, dd 'de' MMMM 'de' yyyy 'a las' HH:mm} (zona horaria de la clínica)</p>
-            <p><strong>Duración:</strong> {(appointment.EndAt - appointment.StartAt).TotalMinutes} minutos</p>
-            <p><strong>Tipo:</strong> {appointment.Type}</p>
-            {(string.IsNullOrWhiteSpace(appointment.Notes) ? "" : $"<p><strong>Notas:</strong> {appointment.Notes}</p>")}
-            <p>Por favor confirma tu cita haciendo clic en el siguiente enlace:</p>
-            <p><a href='{confirmUrl}' style='background: #155EEF; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;'>Confirmar cita</a></p>
-            <p>Este enlace expira en 24 horas.</p>
-            <p>Si no reservaste esta cita, puedes ignorar este correo.</p>
-        ";
+            var subject = $"Confirma tu cita - {clinicName}";
+                        var body = KlinaraEmailTemplates.AppointmentConfirmation(
+                            patientName,
+                            doctorName,
+                            appointment.StartAt,
+                            duration,
+                            appointment.Type.ToString(),
+                            appointment.Notes,
+                            confirmUrl,
+                            clinicName,
+                            subdomain
+                        );
 
-        var user = new ApplicationUser { Email = email, UserName = email };
-        await _emailSender.SendConfirmationLinkAsync(user, email, confirmUrl);
+            var user = new ApplicationUser { Email = email, UserName = email };
+            await _emailSender.SendConfirmationLinkAsync(user, email, confirmUrl);
+        }
     }
-}

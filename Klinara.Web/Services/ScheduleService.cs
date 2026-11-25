@@ -52,6 +52,22 @@ public class ScheduleService : IScheduleService
             return result;
         }
 
+        // Obtener zona horaria de la clínica
+        TimeZoneInfo clinicTimeZone;
+        try
+        {
+            clinicTimeZone = clinic.TimeZone;
+        }
+        catch (System.TimeZoneNotFoundException)
+        {
+            clinicTimeZone = TimeZoneInfo.FindSystemTimeZoneById("America/Mexico_City");
+        }
+
+        // Convertir la hora de la cita a la zona horaria de la clínica para validaciones
+        // La cita se asume que viene en hora local de la clínica (desde el UI)
+        var appointmentLocalStart = TimeZoneInfo.ConvertTime(appointment.StartAt, clinicTimeZone);
+        var appointmentLocalEnd = TimeZoneInfo.ConvertTime(appointment.EndAt, clinicTimeZone);
+
         // 2. Validar que el doctor pertenece a la clínica y está activo
         var doctor = await _context.Users.FindAsync(appointment.DoctorId);
         if (doctor == null || doctor.ClinicId != appointment.ClinicId)
@@ -83,7 +99,7 @@ public class ScheduleService : IScheduleService
             return result;
         }
 
-        // 6. Validar traslapes con otras citas del mismo doctor
+        // 6. Validar traslapes con otras citas del mismo doctor (usar hora UTC original para BD)
         var hasOverlap = await _context.Appointments
             .Where(a => a.DoctorId == appointment.DoctorId
                 && a.ClinicId == appointment.ClinicId
@@ -100,12 +116,12 @@ public class ScheduleService : IScheduleService
             return result;
         }
 
-        // 7. Validar horario dentro de DoctorSchedule
+        // 7. Validar horario dentro de DoctorSchedule (usar hora local de clínica)
         var doctorSchedules = await GetDoctorSchedulesAsync(appointment.ClinicId, appointment.DoctorId, appointment.StartAt);
         var isWithinSchedule = doctorSchedules.Any(ds =>
-            ds.DayOfWeek == appointment.StartAt.DayOfWeek &&
-            TimeOnly.FromDateTime(appointment.StartAt) >= ds.StartTime &&
-            TimeOnly.FromDateTime(appointment.EndAt) <= ds.EndTime);
+            ds.DayOfWeek == appointmentLocalStart.DayOfWeek &&
+            TimeOnly.FromDateTime(appointmentLocalStart) >= ds.StartTime &&
+            TimeOnly.FromDateTime(appointmentLocalEnd) <= ds.EndTime);
 
         if (!isWithinSchedule)
         {
@@ -115,10 +131,10 @@ public class ScheduleService : IScheduleService
 
         // 8. Validar que no caiga en intervalo de comida
         var isLunchTime = doctorSchedules.Any(ds =>
-            ds.DayOfWeek == appointment.StartAt.DayOfWeek &&
+            ds.DayOfWeek == appointmentLocalStart.DayOfWeek &&
             ds.LunchStart.HasValue && ds.LunchEnd.HasValue &&
-            TimeOnly.FromDateTime(appointment.StartAt) < ds.LunchEnd.Value &&
-            TimeOnly.FromDateTime(appointment.EndAt) > ds.LunchStart.Value);
+            TimeOnly.FromDateTime(appointmentLocalStart) < ds.LunchEnd.Value &&
+            TimeOnly.FromDateTime(appointmentLocalEnd) > ds.LunchStart.Value);
 
         if (isLunchTime)
         {
@@ -126,15 +142,15 @@ public class ScheduleService : IScheduleService
             return result;
         }
 
-        // 9. Validar festivos de clínica
-        if (await IsClinicHolidayAsync(appointment.ClinicId, appointment.StartAt))
+        // 9. Validar festivos de clínica (usar fecha local)
+        if (await IsClinicHolidayAsync(appointment.ClinicId, appointmentLocalStart))
         {
             result.Errors.Add("La clínica está cerrada por festivo en esa fecha");
             return result;
         }
 
-        // 10. Validar vacaciones del doctor
-        if (await IsDoctorOnVacationAsync(appointment.DoctorId, appointment.StartAt))
+        // 10. Validar vacaciones del doctor (usar fecha local)
+        if (await IsDoctorOnVacationAsync(appointment.DoctorId, appointmentLocalStart))
         {
             result.Errors.Add("El doctor está de vacaciones en esa fecha");
             return result;

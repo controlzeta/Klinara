@@ -95,8 +95,8 @@ builder.Services.AddControllers();
 // Slot Generator (background job)
 builder.Services.AddSlotGenerator(builder.Configuration);
 
-// Email sender: use SMTP in production, logging stub in development
-if (builder.Environment.IsProduction() && !string.IsNullOrEmpty(builder.Configuration["Email:SmtpHost"]))
+// Email sender: use SMTP when configured, logging stub otherwise
+if (!string.IsNullOrEmpty(builder.Configuration["Email:SmtpHost"]))
 {
     builder.Services.AddSingleton<IEmailSender<ApplicationUser>, SmtpEmailSender>();
 }

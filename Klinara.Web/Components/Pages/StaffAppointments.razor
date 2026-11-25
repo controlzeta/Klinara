@@ -3,11 +3,14 @@
 @using Microsoft.EntityFrameworkCore
 @using Klinara.Web.Data
 @using Klinara.Web.Services
+@using Klinara.Web.Authorization
+@using Microsoft.AspNetCore.Identity
 @attribute [Authorize(Policy = "EmployeeOrAbove")]
 @rendermode InteractiveServer
 @inject ApplicationDbContext DbContext
 @inject IAppointmentService AppointmentService
 @inject AuthenticationStateProvider AuthenticationStateProvider
+@inject UserManager<ApplicationUser> UserManager
 
 <PageTitle>Citas - Staff Klinara</PageTitle>
 
@@ -103,9 +106,7 @@
     }
 </div>
 
-@if (_showNewModal)
-{
-    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);" tabindex="-1">
+<div class="modal fade" tabindex="-1" style="display: @(_showNewModal ? "block" : "none"); background-color: rgba(0,0,0,0.5);" role="dialog">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
@@ -164,7 +165,6 @@
             </div>
         </div>
     </div>
-}
 
 @code {
     private List<Appointment>? _appointments;
@@ -217,48 +217,58 @@
             .OrderBy(p => p.FullName)
             .ToListAsync();
 
-        _availableDoctors = await DbContext.Users
+        // Obtener solo usuarios con rol Doctor en esta clínica
+        var doctorsInRole = await UserManager.GetUsersInRoleAsync(KlinaraRoles.Doctor);
+        _availableDoctors = doctorsInRole
             .Where(u => u.ClinicId == _currentClinicId)
-            .ToListAsync();
+            .OrderBy(u => u.UserName)
+            .ToList();
 
         _isLoading = false;
     }
 
     private async Task SaveAppointment()
     {
-        if (_selectedPatientId == Guid.Empty || _selectedDoctorId == Guid.Empty)
+        try
         {
-            _statusMessage = "Debes seleccionar paciente y doctor.";
-            return;
+            if (_selectedPatientId == Guid.Empty || _selectedDoctorId == Guid.Empty)
+            {
+                _statusMessage = "Debes seleccionar paciente y doctor.";
+                return;
+            }
+
+            var endAt = _startAt.AddMinutes(_durationMinutes);
+            var appointment = new Appointment
+            {
+                Id = Guid.NewGuid(),
+                ClinicId = _currentClinicId,
+                DoctorId = _selectedDoctorId,
+                PatientId = _selectedPatientId,
+                StartAt = _startAt,
+                EndAt = endAt,
+                Type = _type,
+                Notes = _notes,
+                Status = AppointmentStatus.Scheduled,
+                CreatedByUserId = _currentUserId,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            var res = await AppointmentService.CreateAppointmentAsync(appointment, isPatientBooking: false);
+
+            if (!res.Success)
+            {
+                _statusMessage = $"Error al agendar: {string.Join(", ", res.Errors)}";
+                return;
+            }
+
+            _statusMessage = "Cita agendada exitosamente.";
+            _showNewModal = false;
+            await LoadDataAsync();
         }
-
-        var endAt = _startAt.AddMinutes(_durationMinutes);
-        var appointment = new Appointment
+        catch (Exception ex)
         {
-            Id = Guid.NewGuid(),
-            ClinicId = _currentClinicId,
-            DoctorId = _selectedDoctorId,
-            PatientId = _selectedPatientId,
-            StartAt = _startAt,
-            EndAt = endAt,
-            Type = _type,
-            Notes = _notes,
-            Status = AppointmentStatus.Scheduled,
-            CreatedByUserId = _currentUserId,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        var res = await AppointmentService.CreateAppointmentAsync(appointment, isPatientBooking: false);
-
-        if (!res.Success)
-        {
-            _statusMessage = $"Error al agendar: {string.Join(", ", res.Errors)}";
-            return;
+            _statusMessage = $"Error inesperado: {ex.Message}";
         }
-
-        _statusMessage = "Cita agendada exitosamente.";
-        _showNewModal = false;
-        await LoadDataAsync();
     }
 
     private async Task MarkNoShow(Appointment app)
