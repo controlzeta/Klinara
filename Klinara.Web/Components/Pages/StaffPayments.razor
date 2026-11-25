@@ -1,0 +1,305 @@
+@page "/staff/payments"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using Klinara.Web.Data
+@using Klinara.Web.Services
+@attribute [Authorize(Policy = "EmployeeOrAbove")]
+@rendermode InteractiveServer
+@inject ApplicationDbContext DbContext
+@inject IPaymentService PaymentService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager NavigationManager
+
+<PageTitle>Pagos Manuales - Staff Klinara</PageTitle>
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold text-primary mb-1">Registro de Pagos y Abonos</h2>
+            <p class="text-muted mb-0">Gestión de cobros manuales (Efectivo, Tarjeta, SPEI) y saldos</p>
+        </div>
+        <button class="btn btn-success" @onclick="() => _showNewModal = true">
+            <i class="bi bi-cash me-1"></i> Registrar Pago
+        </button>
+    </div>
+
+    @if (!string.IsNullOrEmpty(_statusMessage))
+    {
+        <div class="alert alert-info alert-dismissible fade show" role="alert">
+            @_statusMessage
+            <button type="button" class="btn-close" @onclick="() => _statusMessage = null"></button>
+        </div>
+    }
+
+    <!-- Selector de paciente para ver saldo individual -->
+    <div class="card p-3 mb-4 shadow-sm bg-light border-0">
+        <div class="row align-items-center">
+            <div class="col-12 col-md-4">
+                <label class="form-label fw-bold small text-muted text-uppercase mb-1">Filtrar Saldo por Paciente</label>
+                <select class="form-select" @onchange="OnPatientFilterChanged">
+                    <option value="">-- Todos los pacientes --</option>
+                    @foreach (var p in _availablePatients)
+                    {
+                        <option value="@p.Id" selected="@(p.Id == _selectedPatientIdFilter)">@p.FullName</option>
+                    }
+                </select>
+            </div>
+            @if (_currentBalance != null)
+            {
+                <div class="col-12 col-md-8 mt-3 mt-md-0 d-flex gap-4">
+                    <div>
+                        <small class="text-muted text-uppercase fw-bold">Total Adeudado</small>
+                        <h4 class="fw-bold mb-0 text-dark">$@_currentBalance.TotalDue.ToString("N2")</h4>
+                    </div>
+                    <div>
+                        <small class="text-muted text-uppercase fw-bold">Total Pagado</small>
+                        <h4 class="fw-bold mb-0 text-success">$@_currentBalance.TotalPaid.ToString("N2")</h4>
+                    </div>
+                    <div>
+                        <small class="text-muted text-uppercase fw-bold">Saldo Pendiente</small>
+                        <h4 class="fw-bold mb-0 @(_currentBalance.Balance > 0 ? "text-danger" : "text-muted")">
+                            $@_currentBalance.Balance.ToString("N2")
+                        </h4>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    @if (_isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-2 text-muted">Cargando pagos...</p>
+        </div>
+    }
+    else if (_payments == null || !_payments.Any())
+    {
+        <div class="card p-5 text-center shadow-sm">
+            <i class="bi bi-wallet2 display-4 text-muted mb-3"></i>
+            <h5>No hay pagos registrados</h5>
+            <p class="text-muted">Registra el primer abono o pago de consulta.</p>
+        </div>
+    }
+    else
+    {
+        <div class="card border-0 shadow-sm">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Paciente</th>
+                            <th>Concepto</th>
+                            <th>Método</th>
+                            <th>Monto</th>
+                            <th>Notas</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var pay in _payments)
+                        {
+                            <tr>
+                                <td>@pay.PaidAt.ToString("dd/MM/yyyy HH:mm")</td>
+                                <td class="fw-bold">@pay.PatientName</td>
+                                <td>@pay.Concept</td>
+                                <td>
+                                    <span class="badge bg-light text-dark border">
+                                        @GetMethodName(pay.Method)
+                                    </span>
+                                </td>
+                                <td class="fw-bold text-success fs-6">
+                                    +$@pay.Amount.ToString("N2")
+                                </td>
+                                <td><small class="text-muted">@(pay.AppointmentInfo ?? "-")</small></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+@if (_showNewModal)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">Registrar Pago Manual</h5>
+                    <button type="button" class="btn-close" @onclick="() => _showNewModal = false"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Paciente *</label>
+                        <select class="form-select" @bind="_newPaymentPatientId">
+                            <option value="@Guid.Empty">-- Selecciona un paciente --</option>
+                            @foreach (var p in _availablePatients)
+                            {
+                                <option value="@p.Id">@p.FullName (Adeudo: $@p.TotalDue.ToString("N2"))</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Monto ($) *</label>
+                        <input type="number" step="0.01" class="form-control" @bind="_newPaymentAmount" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Método de Pago *</label>
+                        <select class="form-select" @bind="_newPaymentMethod">
+                            <option value="@PaymentMethod.Cash">Efectivo</option>
+                            <option value="@PaymentMethod.CreditCard">Tarjeta de Crédito</option>
+                            <option value="@PaymentMethod.DebitCard">Tarjeta de Débito</option>
+                            <option value="@PaymentMethod.SPEI">Transferencia SPEI</option>
+                            <option value="@PaymentMethod.Other">Otro</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Concepto *</label>
+                        <input type="text" class="form-control" @bind="_newPaymentConcept" placeholder="Ej. Consulta primera vez / Abono tratamiento" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Notas adicionales</label>
+                        <textarea class="form-control" rows="2" @bind="_newPaymentNotes" placeholder="No. de recibo o comprobante"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="() => _showNewModal = false">Cancelar</button>
+                    <button type="button" class="btn btn-success" @onclick="SavePayment">Registrar Cobro</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "patientId")]
+    public Guid? PatientIdFromQuery { get; set; }
+
+    private List<PaymentSummaryDto>? _payments;
+    private List<Patient> _availablePatients = new();
+    private PatientBalanceDto? _currentBalance;
+    private Guid? _selectedPatientIdFilter;
+
+    private bool _isLoading = true;
+    private bool _showNewModal = false;
+    private string? _statusMessage;
+    private Guid _currentClinicId;
+    private Guid _currentUserId;
+
+    private Guid _newPaymentPatientId = Guid.Empty;
+    private decimal _newPaymentAmount = 500m;
+    private PaymentMethod _newPaymentMethod = PaymentMethod.Cash;
+    private string _newPaymentConcept = "Pago de Consulta";
+    private string? _newPaymentNotes;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        var clinicIdStr = user.FindFirst("ClinicId")?.Value;
+        var userIdStr = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+        if (Guid.TryParse(clinicIdStr, out var cId)) _currentClinicId = cId;
+        if (Guid.TryParse(userIdStr, out var uId)) _currentUserId = uId;
+
+        if (_currentClinicId == Guid.Empty)
+        {
+            var firstClinic = await DbContext.Clinics.FirstOrDefaultAsync();
+            if (firstClinic != null) _currentClinicId = firstClinic.Id;
+        }
+
+        _availablePatients = await DbContext.Patients
+            .Where(p => p.ClinicId == _currentClinicId)
+            .OrderBy(p => p.FullName)
+            .ToListAsync();
+
+        if (PatientIdFromQuery.HasValue && PatientIdFromQuery.Value != Guid.Empty)
+        {
+            _selectedPatientIdFilter = PatientIdFromQuery.Value;
+            _newPaymentPatientId = PatientIdFromQuery.Value;
+            await LoadPatientBalanceAsync(_selectedPatientIdFilter.Value);
+        }
+
+        await LoadPaymentsAsync();
+    }
+
+    private async Task LoadPaymentsAsync()
+    {
+        _isLoading = true;
+        _payments = await PaymentService.GetPaymentsByClinicAsync(_currentClinicId);
+        _isLoading = false;
+    }
+
+    private async Task LoadPatientBalanceAsync(Guid patientId)
+    {
+        try
+        {
+            _currentBalance = await PaymentService.GetPatientBalanceAsync(patientId);
+        }
+        catch
+        {
+            _currentBalance = null;
+        }
+    }
+
+    private async Task OnPatientFilterChanged(ChangeEventArgs e)
+    {
+        if (Guid.TryParse(e.Value?.ToString(), out var pId) && pId != Guid.Empty)
+        {
+            _selectedPatientIdFilter = pId;
+            _newPaymentPatientId = pId;
+            await LoadPatientBalanceAsync(pId);
+        }
+        else
+        {
+            _selectedPatientIdFilter = null;
+            _currentBalance = null;
+        }
+    }
+
+    private async Task SavePayment()
+    {
+        if (_newPaymentPatientId == Guid.Empty)
+        {
+            _statusMessage = "Debes seleccionar un paciente.";
+            return;
+        }
+
+        var dto = new RegisterPaymentDto(
+            _currentClinicId,
+            _newPaymentPatientId,
+            null,
+            _newPaymentAmount,
+            _newPaymentMethod,
+            _newPaymentConcept,
+            _newPaymentNotes,
+            DateTime.UtcNow
+        );
+
+        var res = await PaymentService.RegisterPaymentAsync(dto, _currentUserId);
+        if (!res.Success)
+        {
+            _statusMessage = $"Error: {res.Error}";
+            return;
+        }
+
+        _statusMessage = "Pago registrado exitosamente.";
+        _showNewModal = false;
+        await LoadPaymentsAsync();
+        if (_selectedPatientIdFilter.HasValue)
+        {
+            await LoadPatientBalanceAsync(_selectedPatientIdFilter.Value);
+        }
+    }
+
+    private static string GetMethodName(PaymentMethod m) => m switch
+    {
+        PaymentMethod.Cash => "Efectivo",
+        PaymentMethod.CreditCard => "Tarjeta Crédito",
+        PaymentMethod.DebitCard => "Tarjeta Débito",
+        PaymentMethod.SPEI => "SPEI / Transferencia",
+        _ => "Otro"
+    };
+}

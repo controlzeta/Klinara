@@ -296,6 +296,9 @@ public class Patient
 
     public DateTime? BlockedUntil { get; set; }
 
+    [Column(TypeName = "decimal(18,2)")]
+    public decimal TotalDue { get; set; } = 0m;
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public DateTime? UpdatedAt { get; set; }
@@ -308,6 +311,7 @@ public class Patient
     // Navigation
     public virtual ICollection<Appointment> Appointments { get; set; } = new List<Appointment>();
     public virtual ICollection<PatientToken> Tokens { get; set; } = new List<PatientToken>();
+    public virtual ICollection<Payment> Payments { get; set; } = new List<Payment>();
 }
 
 public enum PatientTokenType

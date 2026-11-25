@@ -82,6 +82,7 @@ builder.Services.AddScoped<IAppointmentService, AppointmentService>();
 // Patient Portal services
 builder.Services.AddScoped<IPatientTokenService, PatientTokenService>();
 builder.Services.AddScoped<IPatientPortalService, PatientPortalService>();
+builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<PatientPortalSessionState>();
 
 // Enable controllers and API routes
@@ -143,6 +144,7 @@ app.UseClinicSubdomain();
 app.UseAntiforgery();
 
 app.MapStaticAssets();
+app.MapControllers();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 

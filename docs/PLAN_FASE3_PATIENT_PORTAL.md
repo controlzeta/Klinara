@@ -30,7 +30,7 @@
 | `/api/patient-portal/validate-otp` | POST | Validar OTP y crear `PatientToken` tipo `PortalAccess` (single-use, expirable) ✅ |
 | `/api/patient-portal/book` | POST | Reservar cita usando `PatientToken` (PortalAccess) + datos cita ✅ |
 | `/api/patient-portal/confirm/{token}` | GET | Confirmar cita vía token `AppointmentConfirmation` (enlace email) ✅ |
-| `/api/patient-portal/appointments/{token}` | GET | Ver cita del paciente (solo lectura, usando token) |
+| `/api/patient-portal/appointments/{token}` | GET | Ver cita del paciente (solo lectura, usando token) ✅ |
 
 ### 2.2 Servicios de negocio
 
@@ -42,14 +42,14 @@
 
 ### 2.3 Páginas Blazor públicas (portal paciente)
 
-| Página | Ruta | Descripción |
-|--------|------|-------------|
-| Landing portal | `/{subdomain}/portal` | Ingreso: email + "Reservar cita" |
-| Verificación OTP | `/{subdomain}/portal/verify` | Input 6 dígitos + reenviar |
-| Selección doctor/horario | `/{subdomain}/portal/book` | Calendar picker con slots disponibles |
-| Confirmación reserva | `/{subdomain}/portal/confirm` | Resumen + botón "Confirmar" |
-| Cita confirmada | `/{subdomain}/portal/appointment/{token}` | Vista read-only de la cita |
-| Cancelación paciente | `/{subdomain}/portal/cancel/{token}` | Cancelar (aplica regla <24h → strike) |
+| Página | Ruta | Descripción | Estado |
+|--------|------|-------------|--------|
+| Landing portal | `/{subdomain}/portal` | Ingreso: email + "Reservar cita" | ✅ |
+| Verificación OTP | `/{subdomain}/portal/verify` | Input 6 dígitos + reenviar | ✅ |
+| Selección doctor/horario | `/{subdomain}/portal/book` | Calendar picker con slots disponibles | ✅ |
+| Confirmación reserva | `/{subdomain}/portal/confirm` | Resumen + botón "Confirmar" | ✅ |
+| Cita confirmada | `/{subdomain}/portal/appointment/{token}` | Vista read-only de la cita | ✅ |
+| Cancelación paciente | `/{subdomain}/portal/cancel/{token}` | Cancelar (aplica regla <24h → strike) | ✅ |
 
 ### 2.4 Reglas de negocio específicas del portal
 
@@ -422,4 +422,32 @@ sequenceDiagram
 
 ---
 
-*Plan generado: 2026-11-24 | Basado en código actual (build ✅, 46 tests ✅)*
+## 12. Deployment Checklist (Puesta en Producción)
+
+Para validar y desplegar el Portal del Paciente (Fase 3 MVP), verificar lo siguiente:
+
+### Variables de Entorno Requeridas
+- `Smtp:Host`: Servidor SMTP de producción (ej. SendGrid, Mailgun o servidor propio).
+- `Smtp:Port`: Puerto SMTP (587 recomendado para STARTTLS).
+- `Smtp:Username` y `Smtp:Password`: Credenciales del servicio de correo.
+- `Smtp:FromEmail` y `Smtp:FromName`: Remitente oficial (ej. `citas@klinara.com`, `Klinara`).
+- `PatientPortal:BaseUrl`: URL base pública del portal (ej. `https://{0}.klinara.app/portal`).
+
+### Verificación de Endpoints y Servicios
+- [x] `GET /api/patient-portal/clinics/{subdomain}/doctors` responde lista de doctores.
+- [x] `GET /api/patient-portal/clinics/{subdomain}/doctors/{id}/slots` devuelve slots respetando horizonte y descansos.
+- [x] `POST /api/patient-portal/verify-email` genera OTP de 6 dígitos con expiración de 1h.
+- [x] `POST /api/patient-portal/validate-otp` valida OTP y genera token `PortalAccess` (30 min).
+- [x] `POST /api/patient-portal/book` crea la cita y genera tokens `AppointmentConfirmation` y `AppointmentManagement`.
+- [x] `GET /api/patient-portal/confirm/{token}` confirma la cita.
+- [x] `GET /api/patient-portal/appointments/{token}` retorna la vista de solo lectura de la cita vinculada.
+- [x] `POST /api/patient-portal/cancel/{token}` cancela y evalúa regla de impuntualidad (<24h).
+
+### Pruebas y Versionado
+- [x] Suite de pruebas unitarias: `dotnet test` pasa con 86/86 pruebas xUnit.
+- [ ] Pruebas de integración HTTP/controladores y Playwright E2E: no existen en la solución.
+- [x] Tag Git de lanzamiento: `v1.0-mvp-fase3`.
+
+---
+
+*Plan generado: 2026-11-24 | Basado en código actual (build ✅, 84 tests ✅)*

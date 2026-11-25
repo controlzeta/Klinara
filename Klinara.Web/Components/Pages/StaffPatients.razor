@@ -1,0 +1,229 @@
+@page "/staff/patients"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using Klinara.Web.Data
+@attribute [Authorize(Policy = "EmployeeOrAbove")]
+@rendermode InteractiveServer
+@inject ApplicationDbContext DbContext
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<PageTitle>Pacientes - Staff Klinara</PageTitle>
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold text-primary mb-1">Directorio de Pacientes</h2>
+            <p class="text-muted mb-0">Gestión de pacientes, saldos y estado de bloqueo</p>
+        </div>
+        <button class="btn btn-primary" @onclick="() => _showNewModal = true">
+            <i class="bi bi-person-plus me-1"></i> Alta de Paciente
+        </button>
+    </div>
+
+    @if (!string.IsNullOrEmpty(_statusMessage))
+    {
+        <div class="alert alert-info alert-dismissible fade show" role="alert">
+            @_statusMessage
+            <button type="button" class="btn-close" @onclick="() => _statusMessage = null"></button>
+        </div>
+    }
+
+    @if (_isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-2 text-muted">Cargando pacientes...</p>
+        </div>
+    }
+    else if (_patients == null || !_patients.Any())
+    {
+        <div class="card p-5 text-center shadow-sm">
+            <i class="bi bi-people display-4 text-muted mb-3"></i>
+            <h5>No hay pacientes registrados</h5>
+            <p class="text-muted">Da de alta al primer paciente para comenzar a programar citas.</p>
+        </div>
+    }
+    else
+    {
+        <div class="card border-0 shadow-sm">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Contacto</th>
+                            <th>Impuntualidades</th>
+                            <th>No-Shows</th>
+                            <th>Saldo Real</th>
+                            <th>Estado</th>
+                            <th class="text-end">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var p in _patients)
+                        {
+                            var totalPaid = p.Payments?.Sum(pay => pay.Amount) ?? 0m;
+                            var balance = p.TotalDue - totalPaid;
+                            <tr>
+                                <td>
+                                    <div class="fw-bold">@p.FullName</div>
+                                    <small class="text-muted">Reg: @p.CreatedAt.ToString("dd/MM/yyyy")</small>
+                                </td>
+                                <td>
+                                    <div>@(p.Email ?? "Sin email")</div>
+                                    <small class="text-muted">@(p.Phone ?? "Sin teléfono")</small>
+                                </td>
+                                <td>
+                                    <span class="badge @(p.LateCancellationCount >= 3 ? "bg-danger" : "bg-light text-dark border")">
+                                        @p.LateCancellationCount / 3
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-light text-dark border">@p.NoShowCount</span>
+                                </td>
+                                <td>
+                                    <span class="fw-semibold @(balance > 0 ? "text-danger" : "text-success")">
+                                        $@balance.ToString("N2")
+                                    </span>
+                                    <br />
+                                    <small class="text-muted">Adeudo: $@p.TotalDue.ToString("N2")</small>
+                                </td>
+                                <td>
+                                    @if (p.IsBlocked)
+                                    {
+                                        <span class="badge bg-danger">Bloqueado</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-success">Activo</span>
+                                    }
+                                </td>
+                                <td class="text-end">
+                                    @if (p.IsBlocked)
+                                    {
+                                        <button class="btn btn-sm btn-outline-warning me-1" @onclick="() => UnblockPatient(p)">
+                                            <i class="bi bi-unlock"></i> Desbloquear
+                                        </button>
+                                    }
+                                    <a class="btn btn-sm btn-outline-primary" href="/staff/payments?patientId=@p.Id">
+                                        <i class="bi bi-cash-stack"></i> Pagos
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+@if (_showNewModal)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">Alta de Nuevo Paciente</h5>
+                    <button type="button" class="btn-close" @onclick="() => _showNewModal = false"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Nombre Completo *</label>
+                        <input type="text" class="form-control" @bind="_newPatient.FullName" placeholder="Ej. Ana Gómez" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Correo Electrónico</label>
+                        <input type="email" class="form-control" @bind="_newPatient.Email" placeholder="correo@ejemplo.com" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Teléfono</label>
+                        <input type="text" class="form-control" @bind="_newPatient.Phone" placeholder="555-123-4567" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Saldo Inicial / Total Adeudado ($)</label>
+                        <input type="number" step="0.01" class="form-control" @bind="_newPatient.TotalDue" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="() => _showNewModal = false">Cancelar</button>
+                    <button type="button" class="btn btn-primary" @onclick="SavePatient">Guardar Paciente</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<Patient>? _patients;
+    private bool _isLoading = true;
+    private bool _showNewModal = false;
+    private string? _statusMessage;
+    private Guid _currentClinicId;
+    private Guid _currentUserId;
+
+    private Patient _newPatient = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        var clinicIdStr = user.FindFirst("ClinicId")?.Value;
+        var userIdStr = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+        if (Guid.TryParse(clinicIdStr, out var cId)) _currentClinicId = cId;
+        if (Guid.TryParse(userIdStr, out var uId)) _currentUserId = uId;
+
+        if (_currentClinicId == Guid.Empty)
+        {
+            var firstClinic = await DbContext.Clinics.FirstOrDefaultAsync();
+            if (firstClinic != null) _currentClinicId = firstClinic.Id;
+        }
+
+        await LoadPatientsAsync();
+    }
+
+    private async Task LoadPatientsAsync()
+    {
+        _isLoading = true;
+        _patients = await DbContext.Patients
+            .Include(p => p.Payments)
+            .Where(p => p.ClinicId == _currentClinicId)
+            .OrderByDescending(p => p.CreatedAt)
+            .ToListAsync();
+        _isLoading = false;
+    }
+
+    private async Task SavePatient()
+    {
+        if (string.IsNullOrWhiteSpace(_newPatient.FullName))
+        {
+            _statusMessage = "El nombre es obligatorio.";
+            return;
+        }
+
+        _newPatient.Id = Guid.NewGuid();
+        _newPatient.ClinicId = _currentClinicId;
+        _newPatient.CreatedByUserId = _currentUserId;
+        _newPatient.CreatedAt = DateTime.UtcNow;
+
+        DbContext.Patients.Add(_newPatient);
+        await DbContext.SaveChangesAsync();
+
+        _statusMessage = $"Paciente '{_newPatient.FullName}' dado de alta exitosamente.";
+        _showNewModal = false;
+        _newPatient = new();
+        await LoadPatientsAsync();
+    }
+
+    private async Task UnblockPatient(Patient p)
+    {
+        p.IsBlocked = false;
+        p.BlockedUntil = null;
+        p.LateCancellationCount = 0;
+        p.UpdatedAt = DateTime.UtcNow;
+        await DbContext.SaveChangesAsync();
+        _statusMessage = $"Paciente '{p.FullName}' desbloqueado.";
+        await LoadPatientsAsync();
+    }
+}

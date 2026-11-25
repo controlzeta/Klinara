@@ -1,6 +1,8 @@
 # PRD Compliance Checklist — Klinara
 
-## Estado actual vs PRD (2026-11-23)
+> **Estado vigente:** consulta la [auditoría actualizada](PRD_COMPLIANCE_AUDIT_2026-11-24.md). El contenido siguiente es una instantánea histórica del 2026-11-23 y no representa el estado actual.
+
+## Instantánea histórica — 2026-11-23
 
 ---
 

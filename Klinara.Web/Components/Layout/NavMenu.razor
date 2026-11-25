@@ -14,24 +14,46 @@
     <nav class="nav flex-column">
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
+                <span class="bi bi-speedometer2 me-2" aria-hidden="true"></span> Dashboard
             </NavLink>
         </div>
 
-
         <AuthorizeView>
             <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="staff/patients">
+                        <span class="bi bi-people me-2" aria-hidden="true"></span> Pacientes
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="staff/appointments">
+                        <span class="bi bi-calendar-event me-2" aria-hidden="true"></span> Citas
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="staff/payments">
+                        <span class="bi bi-cash-stack me-2" aria-hidden="true"></span> Pagos
+                    </NavLink>
+                </div>
                 <div class="nav-item px-3">
                     <NavLink class="nav-link" href="Account/Manage">
                         <span class="bi bi-person-fill-nav-menu" aria-hidden="true"></span> @context.User.Identity?.Name
                     </NavLink>
                 </div>
+                @if (!string.IsNullOrWhiteSpace(_subdomain))
+                {
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="@($"/portal/{_subdomain}")" target="_blank">
+                            <span class="bi bi-box-arrow-up-right me-2" aria-hidden="true"></span> Portal Paciente
+                        </NavLink>
+                    </div>
+                }
                 <div class="nav-item px-3">
                     <form action="Account/Logout" method="post">
                         <AntiforgeryToken />
                         <input type="hidden" name="ReturnUrl" value="@currentUrl" />
                         <button type="submit" class="nav-link">
-                            <span class="bi bi-arrow-bar-left-nav-menu" aria-hidden="true"></span> Logout
+                            <span class="bi bi-arrow-bar-left-nav-menu" aria-hidden="true"></span> Cerrar sesión
                         </button>
                     </form>
                 </div>
@@ -39,12 +61,12 @@
             <NotAuthorized>
                 <div class="nav-item px-3">
                     <NavLink class="nav-link" href="Account/Register">
-                        <span class="bi bi-person-nav-menu" aria-hidden="true"></span> Register
+                        <span class="bi bi-person-nav-menu" aria-hidden="true"></span> Registrarse
                     </NavLink>
                 </div>
                 <div class="nav-item px-3">
                     <NavLink class="nav-link" href="Account/Login">
-                        <span class="bi bi-person-badge-nav-menu" aria-hidden="true"></span> Login
+                        <span class="bi bi-person-badge-nav-menu" aria-hidden="true"></span> Iniciar sesión
                     </NavLink>
                 </div>
             </NotAuthorized>
@@ -53,12 +75,41 @@
 </div>
 
 @code {
-    private string? currentUrl;
+    @inject Klinara.Web.Data.ApplicationDbContext DbContext
+    @inject AuthenticationStateProvider AuthenticationStateProvider
 
-    protected override void OnInitialized()
+    private string? currentUrl;
+    private string? _subdomain;
+
+    protected override async Task OnInitializedAsync()
     {
         currentUrl = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
         NavigationManager.LocationChanged += OnLocationChanged;
+
+        try
+        {
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+            if (user.Identity?.IsAuthenticated == true)
+            {
+                var clinicIdClaim = user.FindFirst("ClinicId")?.Value;
+                if (Guid.TryParse(clinicIdClaim, out var clinicId))
+                {
+                    var clinic = await DbContext.Clinics.FindAsync(clinicId);
+                    _subdomain = clinic?.Subdomain;
+                }
+                
+                if (string.IsNullOrWhiteSpace(_subdomain))
+                {
+                    var firstClinic = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.FirstOrDefaultAsync(DbContext.Clinics);
+                    _subdomain = firstClinic?.Subdomain ?? "demo";
+                }
+            }
+        }
+        catch
+        {
+            _subdomain = "demo";
+        }
     }
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)

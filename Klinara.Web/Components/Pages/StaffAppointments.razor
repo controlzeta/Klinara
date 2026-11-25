@@ -1,0 +1,293 @@
+@page "/staff/appointments"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using Klinara.Web.Data
+@using Klinara.Web.Services
+@attribute [Authorize(Policy = "EmployeeOrAbove")]
+@rendermode InteractiveServer
+@inject ApplicationDbContext DbContext
+@inject IAppointmentService AppointmentService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<PageTitle>Citas - Staff Klinara</PageTitle>
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold text-primary mb-1">Agenda de Citas</h2>
+            <p class="text-muted mb-0">Gestión de consultas médicas del personal</p>
+        </div>
+        <button class="btn btn-primary" @onclick="() => _showNewModal = true">
+            <i class="bi bi-calendar-plus me-1"></i> Agendar Cita
+        </button>
+    </div>
+
+    @if (!string.IsNullOrEmpty(_statusMessage))
+    {
+        <div class="alert alert-info alert-dismissible fade show" role="alert">
+            @_statusMessage
+            <button type="button" class="btn-close" @onclick="() => _statusMessage = null"></button>
+        </div>
+    }
+
+    @if (_isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-2 text-muted">Cargando citas...</p>
+        </div>
+    }
+    else if (_appointments == null || !_appointments.Any())
+    {
+        <div class="card p-5 text-center shadow-sm">
+            <i class="bi bi-calendar-x display-4 text-muted mb-3"></i>
+            <h5>No hay citas registradas</h5>
+            <p class="text-muted">Agenda una nueva cita para comenzar.</p>
+        </div>
+    }
+    else
+    {
+        <div class="card border-0 shadow-sm">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Fecha y Hora</th>
+                            <th>Paciente</th>
+                            <th>Doctor</th>
+                            <th>Tipo</th>
+                            <th>Estado</th>
+                            <th class="text-end">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var app in _appointments)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="fw-bold">@app.StartAt.ToString("dd/MM/yyyy HH:mm")</div>
+                                    <small class="text-muted">Fin: @app.EndAt.ToString("HH:mm")</small>
+                                </td>
+                                <td>
+                                    <div class="fw-semibold">@(app.Patient?.FullName ?? "N/A")</div>
+                                    <small class="text-muted">@(app.Patient?.Email ?? "")</small>
+                                </td>
+                                <td>@(app.Doctor?.UserName ?? "N/A")</td>
+                                <td>
+                                    <span class="badge bg-light text-dark border">@app.Type</span>
+                                </td>
+                                <td>
+                                    <span class="badge @GetBadgeClass(app.Status)">@app.Status</span>
+                                    @if (app.IsLateCancellation)
+                                    {
+                                        <span class="badge bg-danger ms-1">Tardía</span>
+                                    }
+                                </td>
+                                <td class="text-end">
+                                    @if (app.Status == AppointmentStatus.Scheduled || app.Status == AppointmentStatus.Confirmed)
+                                    {
+                                        <button class="btn btn-sm btn-outline-warning me-1" @onclick="() => MarkNoShow(app)">
+                                            No-Show
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger" @onclick="() => CancelAppointment(app)">
+                                            Cancelar
+                                        </button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+@if (_showNewModal)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">Nueva Cita (Staff)</h5>
+                    <button type="button" class="btn-close" @onclick="() => _showNewModal = false"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Paciente *</label>
+                        <select class="form-select" @bind="_selectedPatientId">
+                            <option value="@Guid.Empty">-- Selecciona un paciente --</option>
+                            @foreach (var p in _availablePatients)
+                            {
+                                <option value="@p.Id">@p.FullName @(p.IsBlocked ? "(Bloqueado)" : "")</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Doctor *</label>
+                        <select class="form-select" @bind="_selectedDoctorId">
+                            <option value="@Guid.Empty">-- Selecciona un doctor --</option>
+                            @foreach (var d in _availableDoctors)
+                            {
+                                <option value="@d.Id">@d.UserName</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-semibold">Fecha y Hora Inicio *</label>
+                            <input type="datetime-local" class="form-control" @bind="_startAt" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold">Duración (min)</label>
+                            <input type="number" class="form-control" @bind="_durationMinutes" />
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Tipo</label>
+                        <select class="form-select" @bind="_type">
+                            <option value="@AppointmentType.FirstVisit">Primera vez</option>
+                            <option value="@AppointmentType.FollowUp">Control / Seguimiento</option>
+                            <option value="@AppointmentType.Procedure">Procedimiento</option>
+                            <option value="@AppointmentType.Telemedicine">Telemedicina</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Notas</label>
+                        <textarea class="form-control" rows="2" @bind="_notes"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="() => _showNewModal = false">Cancelar</button>
+                    <button type="button" class="btn btn-primary" @onclick="SaveAppointment">Reservar Cita</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<Appointment>? _appointments;
+    private List<Patient> _availablePatients = new();
+    private List<ApplicationUser> _availableDoctors = new();
+    private bool _isLoading = true;
+    private bool _showNewModal = false;
+    private string? _statusMessage;
+    private Guid _currentClinicId;
+    private Guid _currentUserId;
+
+    private Guid _selectedPatientId = Guid.Empty;
+    private Guid _selectedDoctorId = Guid.Empty;
+    private DateTime _startAt = DateTime.Now.AddDays(1).Date.AddHours(10);
+    private int _durationMinutes = 30;
+    private AppointmentType _type = AppointmentType.FollowUp;
+    private string? _notes;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        var clinicIdStr = user.FindFirst("ClinicId")?.Value;
+        var userIdStr = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+        if (Guid.TryParse(clinicIdStr, out var cId)) _currentClinicId = cId;
+        if (Guid.TryParse(userIdStr, out var uId)) _currentUserId = uId;
+
+        if (_currentClinicId == Guid.Empty)
+        {
+            var firstClinic = await DbContext.Clinics.FirstOrDefaultAsync();
+            if (firstClinic != null) _currentClinicId = firstClinic.Id;
+        }
+
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _isLoading = true;
+        _appointments = await DbContext.Appointments
+            .Include(a => a.Patient)
+            .Include(a => a.Doctor)
+            .Where(a => a.ClinicId == _currentClinicId)
+            .OrderByDescending(a => a.StartAt)
+            .ToListAsync();
+
+        _availablePatients = await DbContext.Patients
+            .Where(p => p.ClinicId == _currentClinicId)
+            .OrderBy(p => p.FullName)
+            .ToListAsync();
+
+        _availableDoctors = await DbContext.Users
+            .Where(u => u.ClinicId == _currentClinicId)
+            .ToListAsync();
+
+        _isLoading = false;
+    }
+
+    private async Task SaveAppointment()
+    {
+        if (_selectedPatientId == Guid.Empty || _selectedDoctorId == Guid.Empty)
+        {
+            _statusMessage = "Debes seleccionar paciente y doctor.";
+            return;
+        }
+
+        var endAt = _startAt.AddMinutes(_durationMinutes);
+        var appointment = new Appointment
+        {
+            Id = Guid.NewGuid(),
+            ClinicId = _currentClinicId,
+            DoctorId = _selectedDoctorId,
+            PatientId = _selectedPatientId,
+            StartAt = _startAt,
+            EndAt = endAt,
+            Type = _type,
+            Notes = _notes,
+            Status = AppointmentStatus.Scheduled,
+            CreatedByUserId = _currentUserId,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        var res = await AppointmentService.CreateAppointmentAsync(appointment, isPatientBooking: false);
+
+        if (!res.Success)
+        {
+            _statusMessage = $"Error al agendar: {string.Join(", ", res.Errors)}";
+            return;
+        }
+
+        _statusMessage = "Cita agendada exitosamente.";
+        _showNewModal = false;
+        await LoadDataAsync();
+    }
+
+    private async Task MarkNoShow(Appointment app)
+    {
+        var res = await AppointmentService.MarkNoShowAsync(app.Id, _currentUserId);
+        if (res.Success)
+        {
+            _statusMessage = "Cita marcada como No-Show.";
+            await LoadDataAsync();
+        }
+    }
+
+    private async Task CancelAppointment(Appointment app)
+    {
+        var res = await AppointmentService.CancelAppointmentAsync(app.Id, _currentUserId, "Cancelación por personal", isPatientCancellation: false);
+        if (res.Success)
+        {
+            _statusMessage = "Cita cancelada.";
+            await LoadDataAsync();
+        }
+    }
+
+    private static string GetBadgeClass(AppointmentStatus status) => status switch
+    {
+        AppointmentStatus.Scheduled => "bg-primary",
+        AppointmentStatus.Confirmed => "bg-success",
+        AppointmentStatus.CancelledByPatient or AppointmentStatus.CancelledByStaff => "bg-danger",
+        AppointmentStatus.NoShow => "bg-warning text-dark",
+        AppointmentStatus.Completed => "bg-info text-dark",
+        _ => "bg-secondary"
+    };
+}
