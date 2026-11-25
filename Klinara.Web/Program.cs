@@ -84,6 +84,7 @@ builder.Services.AddScoped<IPatientTokenService, PatientTokenService>();
 builder.Services.AddScoped<IPatientPortalService, PatientPortalService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<PatientPortalSessionState>();
+builder.Services.AddScoped<IUserAdministrationService, UserAdministrationService>();
 
 // Enable controllers and API routes
 builder.Services.AddControllers();

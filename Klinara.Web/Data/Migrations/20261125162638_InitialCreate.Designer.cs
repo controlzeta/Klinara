@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Klinara.Web.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20261124163104_AddClinicIdToPatientToken")]
-    partial class AddClinicIdToPatientToken
+    [Migration("20261125162638_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -477,6 +477,9 @@ namespace Klinara.Web.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
+                    b.Property<decimal>("TotalDue")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -541,6 +544,62 @@ namespace Klinara.Web.Migrations
                         .IsUnique();
 
                     b.ToTable("PatientTokens");
+                });
+
+            modelBuilder.Entity("Klinara.Web.Data.Payment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid?>("AppointmentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ClinicId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Concept")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Method")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime>("PaidAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("PatientId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AppointmentId");
+
+                    b.HasIndex("ClinicId");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("PaidAt");
+
+                    b.HasIndex("PatientId");
+
+                    b.HasIndex("ClinicId", "PaidAt");
+
+                    b.ToTable("Payments");
                 });
 
             modelBuilder.Entity("Klinara.Web.Data.TimeSlot", b =>
@@ -908,6 +967,40 @@ namespace Klinara.Web.Migrations
                     b.Navigation("Patient");
                 });
 
+            modelBuilder.Entity("Klinara.Web.Data.Payment", b =>
+                {
+                    b.HasOne("Klinara.Web.Data.Appointment", "Appointment")
+                        .WithMany()
+                        .HasForeignKey("AppointmentId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Klinara.Web.Data.Clinic", "Clinic")
+                        .WithMany()
+                        .HasForeignKey("ClinicId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("Klinara.Web.Data.ApplicationUser", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Klinara.Web.Data.Patient", "Patient")
+                        .WithMany("Payments")
+                        .HasForeignKey("PatientId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Appointment");
+
+                    b.Navigation("Clinic");
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("Patient");
+                });
+
             modelBuilder.Entity("Klinara.Web.Data.TimeSlot", b =>
                 {
                     b.HasOne("Klinara.Web.Data.Appointment", "Appointment")
@@ -1049,6 +1142,8 @@ namespace Klinara.Web.Migrations
             modelBuilder.Entity("Klinara.Web.Data.Patient", b =>
                 {
                     b.Navigation("Appointments");
+
+                    b.Navigation("Payments");
 
                     b.Navigation("Tokens");
                 });
