@@ -7,6 +7,33 @@ namespace Klinara.Web.Data;
 public class ApplicationUser : IdentityUser<Guid>
 {
     /// <summary>
+    /// Nombre completo del usuario (para doctores, empleados, admins)
+    /// </summary>
+    [MaxLength(200)]
+    public string? FullName { get; set; }
+
+    /// <summary>
+    /// Teléfono del usuario
+    /// </summary>
+    [MaxLength(50)]
+    public string? Phone { get; set; }
+
+    /// <summary>
+    /// Indica si el usuario está activo
+    /// </summary>
+    public bool IsActive { get; set; } = true;
+
+    /// <summary>
+    /// Fecha de creación del usuario
+    /// </summary>
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    /// <summary>
+    /// Fecha de última actualización
+    /// </summary>
+    public DateTime? UpdatedAt { get; set; }
+
+    /// <summary>
     /// Clínica a la que pertenece el usuario. Null para Administrador de Plataforma.
     /// </summary>
     public Guid? ClinicId { get; set; }

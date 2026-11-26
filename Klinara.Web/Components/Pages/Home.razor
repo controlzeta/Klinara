@@ -1,6 +1,8 @@
-﻿@page "/"
+@page "/"
 @using Microsoft.EntityFrameworkCore
-@inject Klinara.Web.Data.ApplicationDbContext DbContext
+@using Klinara.Web.Data
+@using System.Globalization
+@inject ApplicationDbContext DbContext
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject NavigationManager NavigationManager
 
@@ -8,203 +10,395 @@
 
 <AuthorizeView>
     <Authorized>
-        <div class="container py-4">
-            <div class="d-flex align-items-center justify-content-between mb-4 border-bottom pb-3">
-                <div>
-                    <h2 class="fw-bold text-primary mb-1">Bienvenido a Klinara</h2>
-                    <p class="text-muted mb-0">Sesión iniciada como <strong>@context.User.Identity?.Name</strong></p>
-                </div>
-                @if (_currentClinic != null)
-                {
-                    <span class="badge bg-primary fs-6 px-3 py-2">
-                        <i class="bi bi-hospital me-1"></i> @_currentClinic.Name
-                    </span>
-                }
-            </div>
-
-            <!-- Métricas Clave del Consultorio -->
-            <div class="row g-3 mb-4">
-                <div class="col-12 col-sm-6 col-lg-3">
-                    <div class="card shadow-sm border-0 bg-primary-subtle text-primary p-3">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="text-uppercase fw-bold small mb-1">Pacientes</h6>
-                                <h3 class="fw-bold mb-0">@_patientCount</h3>
-                            </div>
-                            <i class="bi bi-people fs-1"></i>
-                        </div>
-                        <a class="stretched-link text-primary mt-2 small text-decoration-none fw-semibold" href="staff/patients">
-                            Ver directorio &rarr;
-                        </a>
+        <div class="k-app-content">
+            <!-- Header Section -->
+            <div class="k-dashboard-header mb-4">
+                <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-4">
+                    <div>
+                        <h1 class="k-page-title mb-1">Panel Principal</h1>
+                        <p class="k-muted-text mb-0">
+                            Sesión iniciada como <strong>@context.User.Identity?.Name</strong>
+                        </p>
                     </div>
+                    @if (_currentClinic != null)
+                    {
+                        <span class="k-clinic-badge">
+                            <svg class="k-clinic-badge-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-5-13h10v2H7V7zm0 4h10v2H7v-2zm0 4h10v2H7v-2z" />
+                            </svg>
+                            @_currentClinic.Name
+                        </span>
+                    }
                 </div>
 
-                <div class="col-12 col-sm-6 col-lg-3">
-                    <div class="card shadow-sm border-0 bg-success-subtle text-success p-3">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="text-uppercase fw-bold small mb-1">Citas Hoy / Próx.</h6>
-                                <h3 class="fw-bold mb-0">@_appointmentCount</h3>
-                            </div>
-                            <i class="bi bi-calendar-event fs-1"></i>
-                        </div>
-                        <a class="stretched-link text-success mt-2 small text-decoration-none fw-semibold" href="staff/appointments">
-                            Ver agenda &rarr;
-                        </a>
-                    </div>
-                </div>
-
-                <div class="col-12 col-sm-6 col-lg-3">
-                    <div class="card shadow-sm border-0 bg-info-subtle text-info p-3">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="text-uppercase fw-bold small mb-1">Total Cobrado</h6>
-                                <h3 class="fw-bold mb-0">$@_totalCollected.ToString("N2")</h3>
-                            </div>
-                            <i class="bi bi-cash-coin fs-1"></i>
-                        </div>
-                        <a class="stretched-link text-info mt-2 small text-decoration-none fw-semibold" href="staff/payments">
-                            Ver finanzas &rarr;
-                        </a>
-                    </div>
-                </div>
-
-                <div class="col-12 col-sm-6 col-lg-3">
-                    <div class="card shadow-sm border-0 bg-warning-subtle text-warning-emphasis p-3">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="text-uppercase fw-bold small mb-1">Saldo Pendiente</h6>
-                                <h3 class="fw-bold mb-0">$@_totalDue.ToString("N2")</h3>
-                            </div>
-                            <i class="bi bi-exclamation-circle fs-1"></i>
-                        </div>
-                        <a class="stretched-link text-warning-emphasis mt-2 small text-decoration-none fw-semibold" href="staff/payments">
-                            Ver adeudos &rarr;
-                        </a>
-                    </div>
+                <!-- Demo Data Badge -->
+                <div class="k-demo-badge mb-4" role="status" aria-live="polite">
+                    <svg class="k-demo-badge-icon" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M11 17h2v-6h-2v6zm1-15C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-14c-2.21 0-4 1.79-4 4h2c0-1.1.9-2 2-2s2 .9 2 2c0 2-3 1.75-3 5h2c0-2.25 3-2.5 3-5 0-2.21-1.79-4-4-4z" />
+                    </svg>
+                    <span>Modo demostración - Datos de ejemplo</span>
                 </div>
             </div>
 
-            <div class="row g-4 mb-5">
-                <!-- Tarjeta Portal del Paciente -->
-                <div class="col-12 col-md-6 col-lg-4">
-                    <div class="card h-100 shadow-sm border-0 bg-light">
-                        <div class="card-body p-4 text-center">
-                            <div class="rounded-circle bg-primary-subtle text-primary d-inline-flex align-items-center justify-content-center mb-3" style="width: 56px; height: 56px;">
-                                <i class="bi bi-box-arrow-up-right fs-3"></i>
+            <!-- Key Metrics Row (4 Indicadores) -->
+            <div class="k-metrics-grid mb-5">
+                <!-- Pacientes -->
+                <article class="k-metric-card k-metric-patients">
+                    <div class="k-metric-content">
+                        <div class="k-metric-header">
+                            <h6 class="k-metric-label">Pacientes</h6>
+                            <div class="k-metric-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                                    <circle cx="9" cy="7" r="4" />
+                                </svg>
                             </div>
-                            <h5 class="fw-bold">Portal del Paciente</h5>
-                            <p class="text-muted small">Accede a la vista pública de reservas de tu clínica para probar el flujo de citas.</p>
-                            @if (!string.IsNullOrEmpty(_subdomain))
-                            {
-                                <a class="btn btn-primary w-100" href="/portal/@_subdomain" target="_blank">
-                                    Abrir Portal (/portal/@_subdomain)
-                                </a>
-                            }
-                            else
-                            {
-                                <span class="text-muted small">No hay clínica asignada</span>
-                            }
+                        </div>
+                        <div class="k-metric-value" aria-label="@_patientCount pacientes registrados">
+                            @_patientCount
                         </div>
                     </div>
-                </div>
+                    <a class="k-metric-link" href="staff/patients">
+                        Ver directorio
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path d="M5 12h14M12 5l7 7-7 7" />
+                        </svg>
+                    </a>
+                </article>
 
-                <!-- Tarjeta Consulta de Citas -->
-                <div class="col-12 col-md-6 col-lg-4">
-                    <div class="card h-100 shadow-sm border-0 bg-light">
-                        <div class="card-body p-4 text-center">
-                            <div class="rounded-circle bg-info-subtle text-info d-inline-flex align-items-center justify-content-center mb-3" style="width: 56px; height: 56px;">
-                                <i class="bi bi-calendar-check fs-3"></i>
+                <!-- Citas Hoy/Próximas -->
+                <article class="k-metric-card k-metric-appointments">
+                    <div class="k-metric-content">
+                        <div class="k-metric-header">
+                            <h6 class="k-metric-label">Citas Hoy / Próx.</h6>
+                            <div class="k-metric-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                                    <line x1="16" y1="2" x2="16" y2="6" />
+                                    <line x1="8" y1="2" x2="8" y2="6" />
+                                    <line x1="3" y1="10" x2="21" y2="10" />
+                                </svg>
                             </div>
-                            <h5 class="fw-bold">Verificar Cita por Token</h5>
-                            <p class="text-muted small">Accede directamente a la vista de una cita con su token de confirmación o gestión.</p>
-                            @if (!string.IsNullOrEmpty(_subdomain))
-                            {
-                                <a class="btn btn-outline-info w-100" href="/portal/@_subdomain/appointment">
-                                    Consultar Citas
-                                </a>
-                            }
+                        </div>
+                        <div class="k-metric-value" aria-label="@_appointmentCount citas programadas">
+                            @_appointmentCount
                         </div>
                     </div>
-                </div>
+                    <a class="k-metric-link" href="staff/appointments">
+                        Ver agenda
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path d="M5 12h14M12 5l7 7-7 7" />
+                        </svg>
+                    </a>
+                </article>
 
-                <!-- Tarjeta Gestión de Cuenta -->
-                <div class="col-12 col-md-6 col-lg-4">
-                    <div class="card h-100 shadow-sm border-0 bg-light">
-                        <div class="card-body p-4 text-center">
-                            <div class="rounded-circle bg-secondary-subtle text-secondary d-inline-flex align-items-center justify-content-center mb-3" style="width: 56px; height: 56px;">
-                                <i class="bi bi-person-gear fs-3"></i>
+                <!-- Total Cobrado -->
+                <article class="k-metric-card k-metric-collected">
+                    <div class="k-metric-content">
+                        <div class="k-metric-header">
+                            <h6 class="k-metric-label">Total Cobrado</h6>
+                            <div class="k-metric-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <line x1="12" y1="1" x2="12" y2="23" />
+                                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                                </svg>
                             </div>
-                            <h5 class="fw-bold">Perfil y Seguridad</h5>
-                            <p class="text-muted small">Administra tu contraseña, autenticación en dos pasos y datos personales.</p>
-                            <a class="btn btn-outline-secondary w-100" href="Account/Manage">
-                                Administrar Perfil
+                        </div>
+                        <div class="k-metric-value" aria-label="Total cobrado @_totalCollected.ToString("C", new System.Globalization.CultureInfo("es-MX"))">
+                            @_totalCollected.ToString("C", _mxCulture)
+                        </div>
+                    </div>
+                    <a class="k-metric-link" href="staff/payments">
+                        Ver finanzas
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path d="M5 12h14M12 5l7 7-7 7" />
+                        </svg>
+                    </a>
+                </article>
+
+                <!-- Saldo Pendiente -->
+                <article class="k-metric-card k-metric-due">
+                    <div class="k-metric-content">
+                        <div class="k-metric-header">
+                            <h6 class="k-metric-label">Saldo Pendiente</h6>
+                            <div class="k-metric-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <circle cx="12" cy="12" r="10" />
+                                    <line x1="12" y1="8" x2="12" y2="12" />
+                                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="k-metric-value" aria-label="Saldo pendiente @_totalDue.ToString("C", new System.Globalization.CultureInfo("es-MX"))">
+                            @_totalDue.ToString("C", _mxCulture)
+                        </div>
+                    </div>
+                    <a class="k-metric-link" href="staff/payments">
+                        Ver adeudos
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path d="M5 12h14M12 5l7 7-7 7" />
+                        </svg>
+                    </a>
+                </article>
+            </div>
+
+            <!-- Main Content Grid: Agenda + Próxima Cita + Acciones Rápidas + Actividad/Pagos -->
+            <div class="k-dashboard-grid mb-5">
+                <!-- Agenda del Día (Left Column) -->
+                <section class="k-dashboard-section k-agenda-section" aria-labelledby="agenda-title">
+                    <header class="k-section-header">
+                        <h2 id="agenda-title" class="k-section-title">Agenda de Hoy</h2>
+                        <a class="k-section-link" href="staff/appointments">
+                            Ver todo
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                <path d="M5 12h14M12 5l7 7-7 7" />
+                            </svg>
+                        </a>
+                    </header>
+                    <div class="k-agenda-list" role="list" aria-label="Citas programadas para hoy">
+                        @if (_todayAppointments.Any())
+                        {
+                            @foreach (var appt in _todayAppointments)
+                            {
+                                <article class="k-agenda-item @appt.StatusClass" role="listitem">
+                                    <time class="k-agenda-time" datetime="@appt.StartAt.ToString("yyyy-MM-ddTHH:mm:ss")">
+                                        @appt.StartAt.ToString("HH:mm", _mxCulture)
+                                    </time>
+                                    <div class="k-agenda-info">
+                                        <p class="k-agenda-patient">@appt.PatientName</p>
+                                        <p class="k-agenda-doctor">Dr. @appt.DoctorName</p>
+                                    </div>
+                                    <span class="k-agenda-status @appt.StatusBadgeClass">
+                                        @appt.StatusText
+                                    </span>
+                                </article>
+                            }
+                        }
+                        else
+                        {
+                            <div class="k-empty-state" role="status">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                                    <line x1="16" y1="2" x2="16" y2="6" />
+                                    <line x1="8" y1="2" x2="8" y2="6" />
+                                    <line x1="3" y1="10" x2="21" y2="10" />
+                                </svg>
+                                <p>No hay citas programadas para hoy</p>
+                                <a class="k-empty-action" href="staff/appointments">
+                                    Programar primera cita
+                                </a>
+                            </div>
+                        }
+                    </div>
+                </section>
+
+                <!-- Próxima Cita + Acciones Rápidas (Right Column) -->
+                <div class="k-dashboard-side">
+                    <!-- Próxima Cita -->
+                    <section class="k-dashboard-card k-next-appointment" aria-labelledby="next-title">
+                        <header class="k-card-header">
+                            <h3 id="next-title" class="k-card-title">Próxima Cita</h3>
+                        </header>
+                        @if (_nextAppointment != null)
+                        {
+                            <div class="k-next-appt-content">
+                                <div class="k-next-appt-time">
+                                    @_nextAppointment.StartAt.ToString("HH:mm", _mxCulture)
+                                </div>
+                                <div class="k-next-appt-details">
+                                    <p class="k-next-appt-patient">@_nextAppointment.PatientName</p>
+                                    <p class="k-next-appt-doctor">Dr. @_nextAppointment.DoctorName</p>
+                                </div>
+                                <span class="k-next-appt-status @_nextAppointment.StatusBadgeClass">
+                                    @_nextAppointment.StatusText
+                                </span>
+                                <a class="k-next-appt-action" href="staff/appointments">
+                                    Gestionar
+                                </a>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="k-next-appt-empty">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                                    <line x1="16" y1="2" x2="16" y2="6" />
+                                    <line x1="8" y1="2" x2="8" y2="6" />
+                                    <line x1="3" y1="10" x2="21" y2="10" />
+                                </svg>
+                                <p>Sin próximas citas</p>
+                            </div>
+                        }
+                    </section>
+
+                    <!-- Acciones Rápidas -->
+                    <section class="k-dashboard-card k-quick-actions" aria-labelledby="actions-title">
+                        <header class="k-card-header">
+                            <h3 id="actions-title" class="k-card-title">Acciones Rápidas</h3>
+                        </header>
+                        <div class="k-actions-grid" role="list">
+                            <a class="k-action-btn" href="staff/patients/create" role="listitem" aria-label="Nuevo paciente">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                                    <circle cx="9" cy="7" r="4" />
+                                </svg>
+                                <span>Nuevo Paciente</span>
+                            </a>
+                            <a class="k-action-btn" href="staff/appointments/create" role="listitem" aria-label="Nueva cita">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                                    <line x1="16" y1="2" x2="16" y2="6" />
+                                    <line x1="8" y1="2" x2="8" y2="6" />
+                                    <line x1="3" y1="10" x2="21" y2="10" />
+                                </svg>
+                                <span>Nueva Cita</span>
+                            </a>
+                            <a class="k-action-btn" href="staff/payments/create" role="listitem" aria-label="Registrar pago">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                                    <line x1="12" y1="1" x2="12" y2="23" />
+                                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                                </svg>
+                                <span>Registrar Pago</span>
+                            </a>
+                            <a class="k-action-btn" href="/portal/@_subdomain" target="_blank" role="listitem" aria-label="Abrir portal del paciente">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                                    <polyline points="15 3 21 3 21 9" />
+                                    <line x1="10" y1="14" x2="21" y2="3" />
+                                </svg>
+                                <span>Portal Paciente</span>
                             </a>
                         </div>
-                    </div>
+                    </section>
                 </div>
             </div>
 
-            <!-- Listado de Clínicas Disponibles (si es SuperAdmin o para pruebas) -->
-            @if (_clinics != null && _clinics.Any())
-            {
-                <div class="card border-0 shadow-sm">
-                    <div class="card-header bg-white py-3">
-                        <h5 class="fw-bold mb-0">Clínicas Registradas</h5>
+            <!-- Actividad Reciente + Pagos Recientes (Bottom Row) -->
+            <div class="k-dashboard-bottom-grid mb-5">
+                <!-- Actividad Semanal -->
+                <section class="k-dashboard-card k-activity-section" aria-labelledby="activity-title">
+                    <header class="k-card-header">
+                        <h2 id="activity-title" class="k-section-title">Actividad Reciente</h2>
+                    </header>
+                    <div class="k-activity-list" role="list" aria-label="Actividad reciente del consultorio">
+                        @if (_recentActivity.Any())
+                        {
+                            @foreach (var item in _recentActivity)
+                            {
+                                <article class="k-activity-item" role="listitem">
+                                    <div class="k-activity-icon @item.IconClass" aria-hidden="true">
+                                        @item.Icon
+                                    </div>
+                                    <div class="k-activity-content">
+                                        <p class="k-activity-text">@item.Description</p>
+                                        <time class="k-activity-time" datetime="@item.Timestamp.ToString("yyyy-MM-ddTHH:mm:ss")">
+                                            @item.RelativeTime
+                                        </time>
+                                    </div>
+                                </article>
+                            }
+                        }
+                        else
+                        {
+                            <div class="k-empty-state" role="status">
+                                <p>Sin actividad reciente</p>
+                            </div>
+                        }
                     </div>
-                    <div class="card-body p-0">
-                        <div class="table-responsive">
-                            <table class="table table-hover align-middle mb-0">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Nombre</th>
-                                        <th>Subdominio</th>
-                                        <th>Zona Horaria</th>
-                                        <th>Acceso al Portal</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (var clinic in _clinics)
-                                    {
-                                        <tr>
-                                            <td class="fw-semibold">@clinic.Name</td>
-                                            <td><code>@clinic.Subdomain</code></td>
-                                            <td><small class="text-muted">@clinic.TimeZoneId</small></td>
-                                            <td>
-                                                <a class="btn btn-sm btn-outline-primary" href="/portal/@clinic.Subdomain" target="_blank">
-                                                    <i class="bi bi-box-arrow-up-right me-1"></i> Ir al Portal
-                                                </a>
-                                            </td>
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
-                        </div>
+                </section>
+
+                <!-- Pagos Recientes -->
+                <section class="k-dashboard-card k-payments-section" aria-labelledby="payments-title">
+                    <header class="k-card-header">
+                        <h2 id="payments-title" class="k-section-title">Pagos Recientes</h2>
+                        <a class="k-section-link" href="staff/payments">
+                            Ver todo
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                <path d="M5 12h14M12 5l7 7-7 7" />
+                            </svg>
+                        </a>
+                    </header>
+                    <div class="k-payments-list" role="list" aria-label="Pagos registrados recientemente">
+                        @if (_recentPayments.Any())
+                        {
+                            @foreach (var payment in _recentPayments)
+                            {
+                                <article class="k-payment-item" role="listitem">
+                                    <div class="k-payment-info">
+                                        <p class="k-payment-patient">@payment.PatientName</p>
+                                        <p class="k-payment-concept">@payment.Concept</p>
+                                    </div>
+                                    <div class="k-payment-amount">
+                                        @payment.Amount.ToString("C", _mxCulture)
+                                    </div>
+                                    <time class="k-payment-date" datetime="@payment.PaidAt.ToString("yyyy-MM-dd")">
+                                        @payment.PaidAt.ToString("dd MMM", _mxCulture)
+                                    </time>
+                                </article>
+                            }
+                        }
+                        else
+                        {
+                            <div class="k-empty-state" role="status">
+                                <p>No hay pagos registrados</p>
+                                <a class="k-empty-action" href="staff/payments/create">
+                                    Registrar primer pago
+                                </a>
+                            </div>
+                        }
                     </div>
-                </div>
-            }
+                </section>
+            </div>
         </div>
     </Authorized>
     <NotAuthorized>
-        <div class="container py-5 text-center">
-            <h1 class="display-5 fw-bold text-primary mb-3">Bienvenido a Klinara</h1>
-            <p class="lead text-muted mb-4">Sistema integral de gestión de citas, consultorios y portal del paciente.</p>
-            <div class="d-flex justify-content-center gap-3">
-                <a class="btn btn-primary btn-lg px-4" href="Account/Login">Iniciar Sesión</a>
-                <a class="btn btn-outline-secondary btn-lg px-4" href="Account/Register">Registrarse</a>
+        <div class="k-landing">
+            <div class="k-landing-content">
+                <svg class="k-landing-logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-5-13h10v2H7V7zm0 4h10v2H7v-2zm0 4h10v2H7v-2z" />
+                </svg>
+                <h1 class="k-landing-title">Bienvenido a Klinara</h1>
+                <p class="k-landing-subtitle">Sistema integral de gestión de citas, consultorios y portal del paciente.</p>
+                <div class="k-landing-actions">
+                    <a class="btn btn-primary btn-lg" href="Account/Login">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+                            <polyline points="10 17 15 12 10 7" />
+                            <line x1="15" y1="12" x2="3" y2="12" />
+                        </svg>
+                        Iniciar Sesión
+                    </a>
+                    <a class="btn btn-outline-primary btn-lg" href="Account/Register">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                            <circle cx="9" cy="7" r="4" />
+                            <line x1="19" y1="8" x2="19" y2="14" />
+                            <line x1="22" y1="11" x2="16" y2="11" />
+                        </svg>
+                        Registrarse
+                    </a>
+                </div>
             </div>
         </div>
     </NotAuthorized>
 </AuthorizeView>
 
 @code {
+    private readonly CultureInfo _mxCulture = new("es-MX");
+
     private string? _subdomain;
-    private Klinara.Web.Data.Clinic? _currentClinic;
-    private List<Klinara.Web.Data.Clinic>? _clinics;
+    private Clinic? _currentClinic;
+    private List<Clinic>? _clinics;
     private int _patientCount = 0;
     private int _appointmentCount = 0;
     private decimal _totalCollected = 0m;
     private decimal _totalDue = 0m;
+
+    // Dashboard Data
+    private List<DashboardAppointment> _todayAppointments = new();
+    private DashboardAppointment? _nextAppointment;
+    private List<ActivityItem> _recentActivity = new();
+    private List<PaymentItem> _recentPayments = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -212,8 +406,10 @@
         {
             var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
             var user = authState.User;
+
             if (user.Identity?.IsAuthenticated == true)
             {
+                // Load clinics
                 _clinics = await DbContext.Clinics.Where(c => c.IsActive).ToListAsync();
 
                 var clinicIdClaim = user.FindFirst("ClinicId")?.Value;
@@ -223,7 +419,7 @@
                     _subdomain = _currentClinic?.Subdomain;
                 }
 
-                if (string.IsNullOrWhiteSpace(_subdomain) && _clinics.Any())
+                if (string.IsNullOrWhiteSpace(_subdomain) && _clinics?.Any() == true)
                 {
                     _currentClinic = _clinics.First();
                     _subdomain = _currentClinic.Subdomain;
@@ -231,17 +427,248 @@
 
                 if (_currentClinic != null)
                 {
-                    _patientCount = await DbContext.Patients.CountAsync(p => p.ClinicId == _currentClinic.Id);
-                    _appointmentCount = await DbContext.Appointments.CountAsync(a => a.ClinicId == _currentClinic.Id && a.StartAt >= DateTime.UtcNow.Date);
-                    _totalCollected = await DbContext.Payments.Where(p => p.ClinicId == _currentClinic.Id).SumAsync(p => p.Amount);
-                    var allTotalDue = await DbContext.Patients.Where(p => p.ClinicId == _currentClinic.Id).SumAsync(p => p.TotalDue);
-                    _totalDue = Math.Max(0, allTotalDue - _totalCollected);
+                    // Load metrics
+                    await LoadMetricsAsync();
+
+                    // Load dashboard data
+                    await LoadDashboardDataAsync();
                 }
             }
         }
         catch
         {
-            // Manejo silencioso en carga inicial si aún no está inicializada la BD
+            // Silent handling if DB not initialized
         }
+    }
+
+    private async Task LoadMetricsAsync()
+    {
+        if (_currentClinic == null) return;
+
+        _patientCount = await DbContext.Patients.CountAsync(p => p.ClinicId == _currentClinic.Id);
+        _appointmentCount = await DbContext.Appointments
+            .CountAsync(a => a.ClinicId == _currentClinic.Id && a.StartAt >= DateTime.UtcNow.Date);
+
+        _totalCollected = await DbContext.Payments
+            .Where(p => p.ClinicId == _currentClinic.Id)
+            .SumAsync(p => (decimal?)p.Amount) ?? 0m;
+
+        var allTotalDue = await DbContext.Patients
+            .Where(p => p.ClinicId == _currentClinic.Id)
+            .SumAsync(p => (decimal?)p.TotalDue) ?? 0m;
+
+        _totalDue = Math.Max(0, allTotalDue - _totalCollected);
+    }
+
+    private async Task LoadDashboardDataAsync()
+    {
+        if (_currentClinic == null) return;
+
+        var now = DateTime.UtcNow;
+        var todayStart = now.Date;
+        var todayEnd = todayStart.AddDays(1);
+        var weekAgo = now.AddDays(-7);
+
+        // Today's appointments
+        _todayAppointments = await DbContext.Appointments
+            .Where(a => a.ClinicId == _currentClinic.Id
+                && a.StartAt >= todayStart
+                && a.StartAt < todayEnd
+                && a.Status != AppointmentStatus.CancelledByPatient
+                && a.Status != AppointmentStatus.CancelledByStaff)
+            .OrderBy(a => a.StartAt)
+            .Select(a => new DashboardAppointment
+            {
+                Id = a.Id,
+                StartAt = a.StartAt,
+                PatientName = a.Patient.FullName,
+                DoctorName = a.Doctor.FullName ?? "Sin asignar",
+                Status = a.Status,
+                StatusText = GetStatusText(a.Status),
+                StatusClass = GetStatusClass(a.Status),
+                StatusBadgeClass = GetStatusBadgeClass(a.Status)
+            })
+            .ToListAsync();
+
+        // Next upcoming appointment
+        _nextAppointment = await DbContext.Appointments
+            .Where(a => a.ClinicId == _currentClinic.Id
+                && a.StartAt >= now
+                && a.Status != AppointmentStatus.CancelledByPatient
+                && a.Status != AppointmentStatus.CancelledByStaff)
+            .OrderBy(a => a.StartAt)
+            .Select(a => new DashboardAppointment
+            {
+                Id = a.Id,
+                StartAt = a.StartAt,
+                PatientName = a.Patient.FullName,
+                DoctorName = a.Doctor.FullName ?? "Sin asignar",
+                Status = a.Status,
+                StatusText = GetStatusText(a.Status),
+                StatusClass = GetStatusClass(a.Status),
+                StatusBadgeClass = GetStatusBadgeClass(a.Status)
+            })
+            .FirstOrDefaultAsync();
+
+        // Recent activity (last 7 days)
+        _recentActivity = await BuildRecentActivityAsync(weekAgo);
+
+        // Recent payments (last 10)
+        _recentPayments = await DbContext.Payments
+            .Where(p => p.ClinicId == _currentClinic.Id)
+            .OrderByDescending(p => p.PaidAt)
+            .Take(10)
+            .Select(p => new PaymentItem
+            {
+                Id = p.Id,
+                PaidAt = p.PaidAt,
+                Amount = p.Amount,
+                Concept = p.Concept ?? "Pago",
+                PatientName = p.Patient.FullName
+            })
+            .ToListAsync();
+    }
+
+    private async Task<List<ActivityItem>> BuildRecentActivityAsync(DateTime since)
+    {
+        if (_currentClinic == null) return new();
+
+        var activities = new List<ActivityItem>();
+
+        // Recent appointments
+        var recentAppts = await DbContext.Appointments
+            .Where(a => a.ClinicId == _currentClinic.Id
+                && a.CreatedAt >= since
+                && a.Status != AppointmentStatus.CancelledByPatient
+                && a.Status != AppointmentStatus.CancelledByStaff)
+            .OrderByDescending(a => a.CreatedAt)
+            .Take(5)
+            .Select(a => new ActivityItem
+            {
+                Timestamp = a.CreatedAt,
+                Description = $"Cita {GetStatusText(a.Status).ToLower()} para {a.Patient.FullName} con Dr. {a.Doctor.FullName ?? "sin asignar"}",
+                Icon = GetActivityIcon(a.Status),
+                IconClass = GetActivityIconClass(a.Status)
+            })
+            .ToListAsync();
+
+        activities.AddRange(recentAppts);
+
+        // Recent payments
+        var recentPays = await DbContext.Payments
+            .Where(p => p.ClinicId == _currentClinic.Id && p.PaidAt >= since)
+            .OrderByDescending(p => p.PaidAt)
+            .Take(5)
+            .Select(p => new ActivityItem
+            {
+                Timestamp = p.PaidAt,
+                Description = $"Pago de {p.Amount.ToString("C", _mxCulture)} de {p.Patient.FullName} ({p.Concept ?? "Pago"})",
+                Icon = "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"><line x1=\"12\" y1=\"1\" x2=\"12\" y2=\"23\"/><path d=\"M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6\"/></svg>",
+                IconClass = "k-activity-icon-success"
+            })
+            .ToListAsync();
+
+        activities.AddRange(recentPays);
+
+        return activities
+            .OrderByDescending(a => a.Timestamp)
+            .Take(8)
+            .ToList();
+    }
+
+    // Status helpers
+    private static string GetStatusText(AppointmentStatus status) => status switch
+    {
+        AppointmentStatus.Scheduled => "Programada",
+        AppointmentStatus.Confirmed => "Confirmada",
+        AppointmentStatus.Completed => "Atendida",
+        AppointmentStatus.CancelledByPatient => "Cancelada por paciente",
+        AppointmentStatus.CancelledByStaff => "Cancelada por personal",
+        AppointmentStatus.NoShow => "No asistió",
+        _ => "Desconocida"
+    };
+
+    private static string GetStatusClass(AppointmentStatus status) => status switch
+    {
+        AppointmentStatus.Scheduled => "k-agenda-scheduled",
+        AppointmentStatus.Confirmed => "k-agenda-confirmed",
+        AppointmentStatus.Completed => "k-agenda-completed",
+        AppointmentStatus.CancelledByPatient => "k-agenda-cancelled",
+        AppointmentStatus.CancelledByStaff => "k-agenda-cancelled",
+        AppointmentStatus.NoShow => "k-agenda-noshow",
+        _ => ""
+    };
+
+    private static string GetStatusBadgeClass(AppointmentStatus status) => status switch
+    {
+        AppointmentStatus.Scheduled => "k-badge-info",
+        AppointmentStatus.Confirmed => "k-badge-primary",
+        AppointmentStatus.Completed => "k-badge-success",
+        AppointmentStatus.CancelledByPatient => "k-badge-warning",
+        AppointmentStatus.CancelledByStaff => "k-badge-warning",
+        AppointmentStatus.NoShow => "k-badge-danger",
+        _ => "k-badge-secondary"
+    };
+
+    private static string GetActivityIcon(AppointmentStatus status) => status switch
+    {
+        AppointmentStatus.Scheduled => "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"><rect x=\"3\" y=\"4\" width=\"18\" height=\"18\" rx=\"2\"/><line x1=\"16\" y1=\"2\" x2=\"16\" y2=\"6\"/><line x1=\"8\" y1=\"2\" x2=\"8\" y2=\"6\"/><line x1=\"3\" y1=\"10\" x2=\"21\" y2=\"10\"/></svg>",
+        AppointmentStatus.Confirmed => "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"><path d=\"M22 11.08V12a10 10 0 1 1-5.93-9.14\"/><polyline points=\"22 4 12 14.01 9 11.01\"/></svg>",
+        AppointmentStatus.Completed => "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"><path d=\"M22 11.08V12a10 10 0 1 1-5.93-9.14\"/><polyline points=\"22 4 12 14.01 9 11.01\"/></svg>",
+        AppointmentStatus.CancelledByPatient => "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><line x1=\"15\" y1=\"9\" x2=\"9\" y2=\"15\"/><line x1=\"9\" y1=\"9\" x2=\"15\" y2=\"15\"/></svg>",
+        AppointmentStatus.CancelledByStaff => "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><line x1=\"15\" y1=\"9\" x2=\"9\" y2=\"15\"/><line x1=\"9\" y1=\"9\" x2=\"15\" y2=\"15\"/></svg>",
+        AppointmentStatus.NoShow => "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><line x1=\"12\" y1=\"8\" x2=\"12\" y2=\"12\"/><line x1=\"12\" y1=\"16\" x2=\"12.01\" y2=\"16\"/></svg>",
+        _ => "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><line x1=\"12\" y1=\"8\" x2=\"12\" y2=\"12\"/><line x1=\"12\" y1=\"16\" x2=\"12.01\" y2=\"16\"/></svg>"
+    };
+
+    private static string GetActivityIconClass(AppointmentStatus status) => status switch
+    {
+        AppointmentStatus.Scheduled => "k-activity-icon-info",
+        AppointmentStatus.Confirmed => "k-activity-icon-primary",
+        AppointmentStatus.Completed => "k-activity-icon-success",
+        AppointmentStatus.CancelledByPatient => "k-activity-icon-warning",
+        AppointmentStatus.CancelledByStaff => "k-activity-icon-warning",
+        AppointmentStatus.NoShow => "k-activity-icon-danger",
+        _ => "k-activity-icon-secondary"
+    };
+
+    // DTOs
+    private sealed class DashboardAppointment
+    {
+        public Guid Id { get; set; }
+        public DateTime StartAt { get; set; }
+        public string PatientName { get; set; } = "";
+        public string DoctorName { get; set; } = "";
+        public AppointmentStatus Status { get; set; }
+        public string StatusText { get; set; } = "";
+        public string StatusClass { get; set; } = "";
+        public string StatusBadgeClass { get; set; } = "";
+    }
+
+    private sealed class ActivityItem
+    {
+        public DateTime Timestamp { get; set; }
+        public string Description { get; set; } = "";
+        public string Icon { get; set; } = "";
+        public string IconClass { get; set; } = "";
+        public string RelativeTime => GetRelativeTime(Timestamp);
+
+        private static string GetRelativeTime(DateTime dt)
+        {
+            var diff = DateTime.UtcNow - dt;
+            if (diff.TotalMinutes < 1) return "Ahora";
+            if (diff.TotalMinutes < 60) return $"Hace {(int)diff.TotalMinutes} min";
+            if (diff.TotalHours < 24) return $"Hace {(int)diff.TotalHours} h";
+            return $"Hace {(int)diff.TotalDays} d";
+        }
+    }
+
+    private sealed class PaymentItem
+    {
+        public Guid Id { get; set; }
+        public DateTime PaidAt { get; set; }
+        public decimal Amount { get; set; }
+        public string Concept { get; set; } = "";
+        public string PatientName { get; set; } = "";
     }
 }

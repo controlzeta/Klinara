@@ -64,9 +64,14 @@ public class ScheduleService : IScheduleService
         }
 
         // Convertir la hora de la cita a la zona horaria de la clínica para validaciones
-        // La cita se asume que viene en hora local de la clínica (desde el UI)
-        var appointmentLocalStart = TimeZoneInfo.ConvertTime(appointment.StartAt, clinicTimeZone);
-        var appointmentLocalEnd = TimeZoneInfo.ConvertTime(appointment.EndAt, clinicTimeZone);
+        // Si la cita viene con Kind=Unspecified, asumimos que ya está en hora local de la clínica
+        // Si viene con Kind=Utc, convertimos de UTC a hora local de la clínica
+        var appointmentLocalStart = appointment.StartAt.Kind == DateTimeKind.Utc
+            ? TimeZoneInfo.ConvertTimeFromUtc(appointment.StartAt, clinicTimeZone)
+            : DateTime.SpecifyKind(appointment.StartAt, DateTimeKind.Unspecified);
+        var appointmentLocalEnd = appointment.EndAt.Kind == DateTimeKind.Utc
+            ? TimeZoneInfo.ConvertTimeFromUtc(appointment.EndAt, clinicTimeZone)
+            : DateTime.SpecifyKind(appointment.EndAt, DateTimeKind.Unspecified);
 
         // 2. Validar que el doctor pertenece a la clínica y está activo
         var doctor = await _context.Users.FindAsync(appointment.DoctorId);
@@ -200,6 +205,26 @@ public class ScheduleService : IScheduleService
     {
         var slots = new List<TimeSlot>();
 
+        // Obtener zona horaria de la clínica
+        var clinic = await _context.Clinics.FindAsync(clinicId);
+        TimeZoneInfo clinicTimeZone;
+        try
+        {
+            clinicTimeZone = clinic?.TimeZone ?? TimeZoneInfo.FindSystemTimeZoneById("America/Mexico_City");
+        }
+        catch (System.TimeZoneNotFoundException)
+        {
+            clinicTimeZone = TimeZoneInfo.FindSystemTimeZoneById("America/Mexico_City");
+        }
+
+        // Convertir fechas UTC a hora local de la clínica para determinar qué días generar
+        var startDateLocal = startDate.Kind == DateTimeKind.Utc
+            ? TimeZoneInfo.ConvertTimeFromUtc(startDate, clinicTimeZone)
+            : DateTime.SpecifyKind(startDate, DateTimeKind.Unspecified);
+        var endDateLocal = endDate.Kind == DateTimeKind.Utc
+            ? TimeZoneInfo.ConvertTimeFromUtc(endDate, clinicTimeZone)
+            : DateTime.SpecifyKind(endDate, DateTimeKind.Unspecified);
+
         // Obtener horarios del doctor vigentes en el período
         var schedules = await _context.DoctorSchedules
             .Where(ds => ds.ClinicId == clinicId
@@ -215,16 +240,16 @@ public class ScheduleService : IScheduleService
             return slots;
         }
 
-        // Obtener festivos y vacaciones en el período
+        // Obtener festivos y vacaciones en el período (usar fechas locales)
         var holidays = await _context.ClinicHolidays
-            .Where(h => h.ClinicId == clinicId && h.Date >= startDate && h.Date <= endDate)
+            .Where(h => h.ClinicId == clinicId && h.Date.Date >= startDateLocal.Date && h.Date.Date <= endDateLocal.Date)
             .ToListAsync();
 
         var vacations = await _context.DoctorVacations
-            .Where(v => v.DoctorId == doctorId && v.StartDate <= endDate && v.EndDate >= startDate)
+            .Where(v => v.DoctorId == doctorId && v.StartDate.Date <= endDateLocal.Date && v.EndDate.Date >= startDateLocal.Date)
             .ToListAsync();
 
-        // Obtener citas existentes en el período (para marcar slots ocupados)
+        // Obtener citas existentes en el período (usar UTC para BD)
         var existingAppointments = await _context.Appointments
             .Where(a => a.DoctorId == doctorId
                 && a.ClinicId == clinicId
@@ -235,79 +260,83 @@ public class ScheduleService : IScheduleService
             .Select(a => new { a.StartAt, a.EndAt })
             .ToListAsync();
 
-        // Obtener slots ya generados en el período
+        // Obtener slots ya generados en el período (usar UTC para BD)
         var existingSlots = await _context.TimeSlots
             .Where(s => s.DoctorId == doctorId && s.ClinicId == clinicId && s.StartAt >= startDate && s.StartAt <= endDate)
             .ToListAsync();
 
-        var currentDate = startDate.Date;
-        while (currentDate <= endDate.Date)
+        var currentDateLocal = startDateLocal.Date;
+        while (currentDateLocal <= endDateLocal.Date)
         {
             // Saltar festivos de clínica
-            if (holidays.Any(h => h.Date.Date == currentDate.Date && (h.IsFullDay || (h.StartTime.HasValue && h.EndTime.HasValue))))
+            if (holidays.Any(h => h.Date.Date == currentDateLocal.Date && (h.IsFullDay || (h.StartTime.HasValue && h.EndTime.HasValue))))
             {
-                currentDate = currentDate.AddDays(1);
+                currentDateLocal = currentDateLocal.AddDays(1);
                 continue;
             }
 
             // Saltar vacaciones del doctor
-            if (vacations.Any(v => currentDate.Date >= v.StartDate.Date && currentDate.Date <= v.EndDate.Date))
+            if (vacations.Any(v => currentDateLocal.Date >= v.StartDate.Date && currentDateLocal.Date <= v.EndDate.Date))
             {
-                currentDate = currentDate.AddDays(1);
+                currentDateLocal = currentDateLocal.AddDays(1);
                 continue;
             }
 
-            // Buscar horario para este día de la semana
-            var daySchedules = schedules.Where(s => s.DayOfWeek == currentDate.DayOfWeek).ToList();
+            // Buscar horario para este día de la semana (en hora local de clínica)
+            var daySchedules = schedules.Where(s => s.DayOfWeek == currentDateLocal.DayOfWeek).ToList();
             if (!daySchedules.Any())
             {
-                currentDate = currentDate.AddDays(1);
+                currentDateLocal = currentDateLocal.AddDays(1);
                 continue;
             }
 
             foreach (var schedule in daySchedules)
             {
                 var slotDuration = TimeSpan.FromMinutes(schedule.SlotDurationMinutes);
-                var currentTime = currentDate.Add(schedule.StartTime.ToTimeSpan());
+                var currentTimeLocal = currentDateLocal.Add(schedule.StartTime.ToTimeSpan());
 
-                while (currentTime.Add(slotDuration) <= currentDate.Add(schedule.EndTime.ToTimeSpan()))
+                while (currentTimeLocal.Add(slotDuration) <= currentDateLocal.Add(schedule.EndTime.ToTimeSpan()))
                 {
-                    var slotEnd = currentTime.Add(slotDuration);
+                    var slotEndLocal = currentTimeLocal.Add(slotDuration);
 
                     // Saltar intervalo de comida
                     if (schedule.LunchStart.HasValue && schedule.LunchEnd.HasValue)
                     {
                         var lunchStartTs = schedule.LunchStart.Value.ToTimeSpan();
                         var lunchEndTs = schedule.LunchEnd.Value.ToTimeSpan();
-                        var currentTs = currentTime.TimeOfDay;
-                        var slotEndTs = slotEnd.TimeOfDay;
+                        var currentTs = currentTimeLocal.TimeOfDay;
+                        var slotEndTs = slotEndLocal.TimeOfDay;
 
                         if (currentTs < lunchEndTs && slotEndTs > lunchStartTs)
                         {
-                            currentTime = slotEnd;
+                            currentTimeLocal = slotEndLocal;
                             continue;
                         }
                     }
 
-                    // Verificar si ya existe slot
-                    var existingSlot = existingSlots.FirstOrDefault(s => s.StartAt == currentTime && s.EndAt == slotEnd);
+                    // Convertir horas locales a UTC para almacenamiento y comparación
+                    var slotStartUtc = TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(currentTimeLocal, DateTimeKind.Unspecified), clinicTimeZone);
+                    var slotEndUtc = TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(slotEndLocal, DateTimeKind.Unspecified), clinicTimeZone);
+
+                    // Verificar si ya existe slot (comparar en UTC)
+                    var existingSlot = existingSlots.FirstOrDefault(s => s.StartAt == slotStartUtc && s.EndAt == slotEndUtc);
                     if (existingSlot != null)
                     {
-                        currentTime = slotEnd;
+                        currentTimeLocal = slotEndLocal;
                         continue;
                     }
 
-                    // Verificar si hay cita en este slot
+                    // Verificar si hay cita en este slot (comparar en UTC)
                     var hasAppointment = existingAppointments.Any(a =>
-                        a.StartAt < slotEnd && a.EndAt > currentTime);
+                        a.StartAt < slotEndUtc && a.EndAt > slotStartUtc);
 
                     var newSlot = new TimeSlot
                     {
                         Id = Guid.NewGuid(),
                         ClinicId = clinicId,
                         DoctorId = doctorId,
-                        StartAt = currentTime,
-                        EndAt = slotEnd,
+                        StartAt = slotStartUtc,
+                        EndAt = slotEndUtc,
                         IsBooked = hasAppointment,
                         IsBlocked = false,
                         CreatedAt = DateTime.UtcNow
@@ -315,18 +344,20 @@ public class ScheduleService : IScheduleService
 
                     if (hasAppointment)
                     {
-                        var appointment = existingAppointments.First(a => a.StartAt == currentTime && a.EndAt == slotEnd);
-                        newSlot.AppointmentId = appointment.StartAt == currentTime && appointment.EndAt == slotEnd
-                            ? _context.Appointments.First(ap => ap.StartAt == currentTime && ap.EndAt == slotEnd).Id
-                            : null;
+                        var appointment = existingAppointments.FirstOrDefault(a => a.StartAt == slotStartUtc && a.EndAt == slotEndUtc);
+                        if (appointment != null)
+                        {
+                            newSlot.AppointmentId = _context.Appointments
+                                .FirstOrDefault(ap => ap.StartAt == slotStartUtc && ap.EndAt == slotEndUtc)?.Id;
+                        }
                     }
 
                     slots.Add(newSlot);
-                    currentTime = slotEnd;
+                    currentTimeLocal = slotEndLocal;
                 }
             }
 
-            currentDate = currentDate.AddDays(1);
+            currentDateLocal = currentDateLocal.AddDays(1);
         }
 
         return slots;

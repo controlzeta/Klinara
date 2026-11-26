@@ -81,6 +81,7 @@ builder.Services.AddScoped<IOtpService, OtpService>();
 builder.Services.AddScoped<OtpEmailSender>();
 builder.Services.AddScoped<IScheduleService, ScheduleService>();
 builder.Services.AddScoped<IAppointmentService, AppointmentService>();
+builder.Services.AddScoped<IClinicService, ClinicService>();
 
 // Patient Portal services
 builder.Services.AddScoped<IPatientTokenService, PatientTokenService>();

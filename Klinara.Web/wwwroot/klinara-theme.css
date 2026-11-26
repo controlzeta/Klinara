@@ -424,3 +424,660 @@ main.klinara-main article.content > h1 { margin: 0 0 20px; font-size: 28px; font
 /* PersonalData form styling */
 .k-account-panel .form-row { margin-bottom: 1rem; }
 .k-account-panel .btn { font-size: 14px; padding: 8px 16px; }
+
+/* ==========================================
+   DASHBOARD SPECIFIC STYLES
+   ========================================== */
+
+/* Header & Demo Badge */
+.k-dashboard-header {
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--k-border);
+}
+.k-page-title {
+    font-size: 28px;
+    font-weight: 600;
+    color: var(--k-ink);
+    letter-spacing: -0.02em;
+    margin: 0;
+}
+.k-muted-text {
+    color: var(--k-muted) !important;
+    font-size: 14px;
+}
+.k-clinic-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--k-blue);
+    background: rgba(0, 82, 255, 0.08);
+    border: 1px solid rgba(0, 82, 255, 0.2);
+    border-radius: 56px;
+    white-space: nowrap;
+}
+.k-clinic-badge-icon {
+    width: 18px;
+    height: 18px;
+    flex: none;
+    fill: currentColor;
+}
+.k-demo-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--k-warning);
+    background: var(--k-warning-soft);
+    border: 1px solid rgba(138, 91, 0, 0.24);
+    border-radius: 56px;
+    width: fit-content;
+}
+.k-demo-badge-icon {
+    width: 16px;
+    height: 16px;
+    flex: none;
+    fill: currentColor;
+}
+
+/* Metrics Grid */
+.k-metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+}
+@media (min-width: 576px) {
+    .k-metrics-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+@media (max-width: 575.98px) {
+    .k-metrics-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.k-metric-card {
+    background: var(--k-surface);
+    border: 1px solid var(--k-border);
+    border-radius: var(--k-radius-card);
+    box-shadow: var(--k-shadow);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.k-metric-card:hover {
+    box-shadow: 0 4px 20px rgba(10, 11, 13, 0.1);
+    border-color: var(--k-blue);
+}
+.k-metric-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+.k-metric-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+.k-metric-label {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--k-muted);
+    margin: 0;
+}
+.k-metric-icon {
+    display: flex;
+    width: 40px;
+    height: 40px;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    color: #fff;
+}
+.k-metric-patients .k-metric-icon { background: var(--k-blue); }
+.k-metric-appointments .k-metric-icon { background: var(--k-success); }
+.k-metric-collected .k-metric-icon { background: var(--k-info); }
+.k-metric-due .k-metric-icon { background: var(--k-warning); }
+.k-metric-icon svg {
+    width: 20px;
+    height: 20px;
+    flex: none;
+}
+.k-metric-value {
+    font-size: 28px;
+    font-weight: 600;
+    color: var(--k-ink);
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    font-variant-numeric: tabular-nums;
+}
+.k-metric-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid var(--k-border);
+    color: var(--k-blue) !important;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: color 0.15s ease;
+}
+.k-metric-link:hover {
+    color: var(--k-blue-hover) !important;
+}
+.k-metric-link svg {
+    width: 14px;
+    height: 14px;
+    flex: none;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* Dashboard Grid Layout */
+.k-dashboard-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 24px;
+}
+@media (min-width: 992px) {
+    .k-dashboard-grid {
+        grid-template-columns: 1fr 360px;
+    }
+}
+.k-dashboard-section {
+    background: var(--k-surface);
+    border: 1px solid var(--k-border);
+    border-radius: var(--k-radius-card);
+    box-shadow: var(--k-shadow);
+}
+.k-dashboard-side {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+/* Section Headers */
+.k-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid var(--k-border);
+}
+.k-section-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--k-ink);
+    margin: 0;
+}
+.k-section-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--k-link);
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: color 0.15s ease;
+}
+.k-section-link:hover {
+    color: var(--k-blue-hover);
+}
+.k-section-link svg {
+    width: 14px;
+    height: 14px;
+    flex: none;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* Agenda */
+.k-agenda-list {
+    padding: 8px 16px 24px;
+}
+.k-agenda-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    border-radius: var(--k-radius-control);
+    transition: background-color 0.15s ease;
+    border-left: 3px solid transparent;
+}
+.k-agenda-item:hover {
+    background: var(--k-surface-secondary);
+}
+.k-agenda-scheduled { border-left-color: var(--k-info); }
+.k-agenda-confirmed { border-left-color: var(--k-blue); }
+.k-agenda-completed { border-left-color: var(--k-success); }
+.k-agenda-cancelled { border-left-color: var(--k-warning); opacity: 0.7; }
+.k-agenda-noshow { border-left-color: var(--k-danger); opacity: 0.7; }
+.k-agenda-time {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--k-ink);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    flex: none;
+}
+.k-agenda-info {
+    flex: 1;
+    min-width: 0;
+}
+.k-agenda-patient {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--k-ink);
+    margin: 0 0 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.k-agenda-doctor {
+    font-size: 12px;
+    color: var(--k-muted);
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.k-agenda-status {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 999px;
+    white-space: nowrap;
+    flex: none;
+}
+.k-badge-primary { color: var(--k-blue) !important; background: rgba(0, 82, 255, 0.1) !important; }
+.k-badge-success { color: var(--k-success) !important; background: var(--k-success-soft) !important; }
+.k-badge-info { color: var(--k-info) !important; background: var(--k-info-soft) !important; }
+.k-badge-warning { color: var(--k-warning) !important; background: var(--k-warning-soft) !important; }
+.k-badge-danger { color: var(--k-danger) !important; background: var(--k-danger-soft) !important; }
+.k-badge-secondary { color: var(--k-muted) !important; background: var(--k-surface-secondary) !important; }
+
+/* Dashboard Cards */
+.k-dashboard-card {
+    background: var(--k-surface);
+    border: 1px solid var(--k-border);
+    border-radius: var(--k-radius-card);
+    box-shadow: var(--k-shadow);
+    overflow: hidden;
+}
+.k-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--k-border);
+}
+.k-card-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--k-ink);
+    margin: 0;
+}
+
+/* Next Appointment */
+.k-next-appointment {
+    padding: 0;
+}
+.k-next-appt-content {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.k-next-appt-time {
+    font-size: 32px;
+    font-weight: 600;
+    color: var(--k-ink);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+}
+.k-next-appt-details {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.k-next-appt-patient {
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--k-ink);
+    margin: 0;
+}
+.k-next-appt-doctor {
+    font-size: 13px;
+    color: var(--k-muted);
+    margin: 0;
+}
+.k-next-appt-status {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 999px;
+    width: fit-content;
+}
+.k-next-appt-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 16px;
+    color: var(--k-blue) !important;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    border: 1px solid var(--k-blue);
+    border-radius: var(--k-radius-control);
+    transition: all 0.15s ease;
+    margin-top: 4px;
+}
+.k-next-appt-action:hover {
+    color: #fff !important;
+    background: var(--k-blue);
+}
+.k-next-appt-empty {
+    padding: 32px 20px;
+    text-align: center;
+    color: var(--k-muted);
+}
+.k-next-appt-empty svg {
+    width: 48px;
+    height: 48px;
+    flex: none;
+    margin: 0 auto 12px;
+    opacity: 0.5;
+}
+.k-next-appt-empty p {
+    margin: 0;
+    font-size: 14px;
+}
+
+/* Quick Actions */
+.k-quick-actions {
+    padding: 0;
+}
+.k-actions-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    padding: 16px;
+}
+@media (min-width: 576px) {
+    .k-actions-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+.k-action-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 20px 12px;
+    color: var(--k-ink);
+    text-decoration: none;
+    background: var(--k-surface-secondary);
+    border: 1px solid var(--k-border);
+    border-radius: var(--k-radius-card);
+    transition: all 0.15s ease;
+}
+.k-action-btn:hover {
+    color: var(--k-blue);
+    background: var(--k-surface);
+    border-color: var(--k-blue);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(10, 11, 13, 0.1);
+}
+.k-action-btn svg {
+    width: 24px;
+    height: 24px;
+    flex: none;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+.k-action-btn span {
+    font-size: 12px;
+    font-weight: 500;
+    text-align: center;
+}
+
+/* Dashboard Bottom Grid */
+.k-dashboard-bottom-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 24px;
+}
+@media (min-width: 992px) {
+    .k-dashboard-bottom-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+/* Activity */
+.k-activity-section {
+    padding: 0;
+}
+.k-activity-list {
+    padding: 8px 16px 24px;
+}
+.k-activity-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--k-border);
+}
+.k-activity-item:last-child {
+    border-bottom: none;
+}
+.k-activity-icon {
+    display: flex;
+    width: 36px;
+    height: 36px;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    color: #fff;
+}
+.k-activity-icon-primary { background: var(--k-blue); }
+.k-activity-icon-success { background: var(--k-success); }
+.k-activity-icon-info { background: var(--k-info); }
+.k-activity-icon-warning { background: var(--k-warning); }
+.k-activity-icon-danger { background: var(--k-danger); }
+.k-activity-icon-secondary { background: var(--k-muted); }
+.k-activity-icon svg {
+    width: 18px;
+    height: 18px;
+    flex: none;
+}
+.k-activity-content {
+    flex: 1;
+    min-width: 0;
+}
+.k-activity-text {
+    font-size: 14px;
+    color: var(--k-ink);
+    margin: 0 0 4px;
+    line-height: 1.4;
+}
+.k-activity-time {
+    font-size: 12px;
+    color: var(--k-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+/* Payments */
+.k-payments-section {
+    padding: 0;
+}
+.k-payments-list {
+    padding: 8px 16px 24px;
+}
+.k-payment-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--k-border);
+}
+.k-payment-item:last-child {
+    border-bottom: none;
+}
+.k-payment-info {
+    flex: 1;
+    min-width: 0;
+}
+.k-payment-patient {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--k-ink);
+    margin: 0 0 2px;
+}
+.k-payment-concept {
+    font-size: 12px;
+    color: var(--k-muted);
+    margin: 0;
+}
+.k-payment-amount {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--k-success);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    flex: none;
+}
+.k-payment-date {
+    font-size: 12px;
+    color: var(--k-muted);
+    white-space: nowrap;
+    flex: none;
+}
+
+/* Empty States */
+.k-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 16px;
+    text-align: center;
+    color: var(--k-muted);
+}
+.k-empty-state svg {
+    width: 48px;
+    height: 48px;
+    flex: none;
+    margin: 0 auto 12px;
+    opacity: 0.5;
+}
+.k-empty-state p {
+    margin: 0 0 12px;
+    font-size: 14px;
+}
+.k-empty-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--k-link);
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: color 0.15s ease;
+}
+.k-empty-action:hover {
+    color: var(--k-blue-hover);
+}
+
+/* Landing Page */
+.k-landing {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    background: var(--k-background);
+}
+.k-landing-content {
+    max-width: 480px;
+    text-align: center;
+}
+.k-landing-logo {
+    width: 80px;
+    height: 80px;
+    flex: none;
+    margin: 0 auto 24px;
+    color: var(--k-blue);
+}
+.k-landing-title {
+    font-size: 32px;
+    font-weight: 600;
+    color: var(--k-ink);
+    margin: 0 0 12px;
+    letter-spacing: -0.02em;
+}
+.k-landing-subtitle {
+    font-size: 16px;
+    color: var(--k-muted);
+    margin: 0 0 32px;
+    line-height: 1.6;
+}
+.k-landing-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+@media (min-width: 576px) {
+    .k-landing-actions {
+        flex-direction: row;
+        justify-content: center;
+    }
+}
+.k-landing-actions .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 24px;
+    font-size: 15px;
+    font-weight: 600;
+    border-radius: 56px;
+    min-width: 180px;
+}
+.k-landing-actions .btn svg {
+    width: 18px;
+    height: 18px;
+    flex: none;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
