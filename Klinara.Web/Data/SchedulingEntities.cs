@@ -151,7 +151,7 @@ public class DoctorSchedule
 
     public bool IsActive { get; set; } = true;
 
-    public DateTime EffectiveFrom { get; set; } = DateTime.UtcNow;
+    public DateTime EffectiveFrom { get; set; } = DateTime.UtcNow.Date;
 
     public DateTime? EffectiveTo { get; set; }
 

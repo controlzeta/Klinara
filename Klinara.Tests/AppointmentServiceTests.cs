@@ -79,6 +79,38 @@ public class AppointmentServiceTests
         return new AppointmentService(context, scheduleService, appointmentServiceLogger);
     }
 
+    // Helpers para zona horaria de clínica (America/Mexico_City = UTC-6)
+    private static readonly TimeZoneInfo ClinicTimeZone = TimeZoneInfo.FindSystemTimeZoneById("America/Mexico_City");
+
+    private static DateTime GetNowInClinicTimeZone()
+    {
+        return TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, ClinicTimeZone);
+    }
+
+    private static DateTime GetNextMondayInClinicTimeZone(DateTime? from = null)
+    {
+        var baseTime = from ?? GetNowInClinicTimeZone();
+        var nextMonday = baseTime.AddDays(((int)DayOfWeek.Monday - (int)baseTime.DayOfWeek + 7) % 7);
+        if (nextMonday <= baseTime) nextMonday = nextMonday.AddDays(7);
+        return nextMonday;
+    }
+
+    private static Appointment CreateAppointmentInClinicTime(Guid clinicId, Guid doctorId, Guid patientId, DateTime localDate, TimeOnly startTime, TimeOnly endTime, Guid? createdByUserId = null)
+    {
+        var startAt = DateTime.SpecifyKind(localDate.Date.Add(startTime.ToTimeSpan()), DateTimeKind.Unspecified);
+        var endAt = DateTime.SpecifyKind(localDate.Date.Add(endTime.ToTimeSpan()), DateTimeKind.Unspecified);
+        return new Appointment
+        {
+            Id = Guid.NewGuid(),
+            ClinicId = clinicId,
+            DoctorId = doctorId,
+            PatientId = patientId,
+            StartAt = startAt,
+            EndAt = endAt,
+            CreatedByUserId = createdByUserId ?? patientId
+        };
+    }
+
     [Fact]
     public async Task CreateAppointmentAsync_ValidAppointment_ReturnsSuccess()
     {
@@ -99,18 +131,9 @@ public class AppointmentServiceTests
 
         await context.SaveChangesAsync();
 
-        var nextMonday = DateTime.UtcNow.AddDays(((int)DayOfWeek.Monday - (int)DateTime.UtcNow.DayOfWeek + 7) % 7);
-        if (nextMonday <= DateTime.UtcNow) nextMonday = nextMonday.AddDays(7);
+        var nextMonday = GetNextMondayInClinicTimeZone();
 
-        var appointment = new Appointment
-        {
-            ClinicId = clinic.Id,
-            DoctorId = doctor.Id,
-            PatientId = patient.Id,
-            StartAt = nextMonday.Date.AddHours(10),
-            EndAt = nextMonday.Date.AddHours(10).AddMinutes(30),
-            CreatedByUserId = doctor.Id
-        };
+        var appointment = CreateAppointmentInClinicTime(clinic.Id, doctor.Id, patient.Id, nextMonday, new TimeOnly(10, 0), new TimeOnly(10, 30), doctor.Id);
 
         var service = CreateAppointmentService(context);
 
@@ -145,34 +168,17 @@ public class AppointmentServiceTests
 
         await context.SaveChangesAsync();
 
-        var nextMonday = DateTime.UtcNow.AddDays(((int)DayOfWeek.Monday - (int)DateTime.UtcNow.DayOfWeek + 7) % 7);
-        if (nextMonday <= DateTime.UtcNow) nextMonday = nextMonday.AddDays(7);
+        var nextMonday = GetNextMondayInClinicTimeZone();
 
         // Primera cita
-        var appt1 = new Appointment
-        {
-            ClinicId = clinic.Id,
-            DoctorId = doctor.Id,
-            PatientId = patient1.Id,
-            StartAt = nextMonday.Date.AddHours(10),
-            EndAt = nextMonday.Date.AddHours(10).AddMinutes(30),
-            CreatedByUserId = doctor.Id
-        };
+        var appt1 = CreateAppointmentInClinicTime(clinic.Id, doctor.Id, patient1.Id, nextMonday, new TimeOnly(10, 0), new TimeOnly(10, 30), doctor.Id);
 
         var service = CreateAppointmentService(context);
         var result1 = await service.CreateAppointmentAsync(appt1, isPatientBooking: true);
         Assert.True(result1.Success);
 
         // Segunda cita que se traslape
-        var appt2 = new Appointment
-        {
-            ClinicId = clinic.Id,
-            DoctorId = doctor.Id,
-            PatientId = patient2.Id,
-            StartAt = nextMonday.Date.AddHours(10).AddMinutes(15),
-            EndAt = nextMonday.Date.AddHours(10).AddMinutes(45),
-            CreatedByUserId = doctor.Id
-        };
+        var appt2 = CreateAppointmentInClinicTime(clinic.Id, doctor.Id, patient2.Id, nextMonday, new TimeOnly(10, 15), new TimeOnly(10, 45), doctor.Id);
 
         // Act
         var result2 = await service.CreateAppointmentAsync(appt2, isPatientBooking: true);
@@ -459,7 +465,7 @@ public class AppointmentServiceTests
         var service = CreateAppointmentService(context);
 
         // Usar un lunes fijo conocido en el futuro (evita problemas de cálculo de "próximo lunes")
-        var fixedMonday = new DateTime(2026, 12, 7, 10, 0, 0, DateTimeKind.Utc); // Lunes 7 dic 2026 10:00 UTC
+        var fixedMonday = new DateTime(2026, 12, 7, 10, 0, 0, DateTimeKind.Unspecified); // Lunes 7 dic 2026 10:00 hora local clínica
         // Verificar que es lunes
         Assert.Equal(DayOfWeek.Monday, fixedMonday.DayOfWeek);
 
@@ -551,7 +557,7 @@ public class AppointmentServiceTests
 
         var service = CreateAppointmentService(context);
 
-        var fixedMonday = new DateTime(2026, 12, 7, 10, 0, 0, DateTimeKind.Utc);
+        var fixedMonday = new DateTime(2026, 12, 7, 10, 0, 0, DateTimeKind.Unspecified); // Lunes 10:00 hora local clínica
         Assert.Equal(DayOfWeek.Monday, fixedMonday.DayOfWeek);
 
         // Act

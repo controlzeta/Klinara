@@ -98,8 +98,8 @@ public class SchedulesController : ControllerBase
             LunchEnd = dto.LunchEnd,
             SlotDurationMinutes = dto.SlotDurationMinutes,
             IsActive = true,
-            EffectiveFrom = dto.EffectiveFrom,
-            EffectiveTo = dto.EffectiveTo,
+            EffectiveFrom = dto.EffectiveFrom.Date,
+            EffectiveTo = dto.EffectiveTo?.Date,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -123,8 +123,8 @@ public class SchedulesController : ControllerBase
         schedule.LunchStart = dto.LunchStart;
         schedule.LunchEnd = dto.LunchEnd;
         schedule.SlotDurationMinutes = dto.SlotDurationMinutes;
-        schedule.EffectiveFrom = dto.EffectiveFrom;
-        schedule.EffectiveTo = dto.EffectiveTo;
+        schedule.EffectiveFrom = dto.EffectiveFrom.Date;
+        schedule.EffectiveTo = dto.EffectiveTo?.Date;
         schedule.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();

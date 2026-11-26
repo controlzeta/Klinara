@@ -56,7 +56,7 @@ public class ScheduleServiceTests
             LunchEnd = lunchEnd,
             SlotDurationMinutes = slotDuration,
             IsActive = true,
-            EffectiveFrom = DateTime.UtcNow.Date.AddDays(-30) // Usar solo fecha (medianoche) para evitar problemas de zona horaria
+            EffectiveFrom = DateTime.UtcNow.Date.AddDays(-30) // Usar solo fecha (sin zona horaria)
         };
     }
 
@@ -64,6 +64,38 @@ public class ScheduleServiceTests
     {
         var logger = new LoggerFactory().CreateLogger<ScheduleService>();
         return new ScheduleService(context, logger);
+    }
+
+    // Helpers para zona horaria de clínica (America/Mexico_City = UTC-6)
+    private static readonly TimeZoneInfo ClinicTimeZone = TimeZoneInfo.FindSystemTimeZoneById("America/Mexico_City");
+
+    private static DateTime GetNowInClinicTimeZone()
+    {
+        return TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, ClinicTimeZone);
+    }
+
+    private static DateTime GetNextMondayInClinicTimeZone(DateTime? from = null)
+    {
+        var baseTime = from ?? GetNowInClinicTimeZone();
+        var nextMonday = baseTime.AddDays(((int)DayOfWeek.Monday - (int)baseTime.DayOfWeek + 7) % 7);
+        if (nextMonday <= baseTime) nextMonday = nextMonday.AddDays(7);
+        return nextMonday;
+    }
+
+    private static Appointment CreateAppointmentInClinicTime(Guid clinicId, Guid doctorId, Guid patientId, DateTime localDate, TimeOnly startTime, TimeOnly endTime, Guid? createdByUserId = null)
+    {
+        var startAt = DateTime.SpecifyKind(localDate.Date.Add(startTime.ToTimeSpan()), DateTimeKind.Unspecified);
+        var endAt = DateTime.SpecifyKind(localDate.Date.Add(endTime.ToTimeSpan()), DateTimeKind.Unspecified);
+        return new Appointment
+        {
+            Id = Guid.NewGuid(),
+            ClinicId = clinicId,
+            DoctorId = doctorId,
+            PatientId = patientId,
+            StartAt = startAt,
+            EndAt = endAt,
+            CreatedByUserId = createdByUserId ?? patientId
+        };
     }
 
     [Fact]
@@ -138,8 +170,11 @@ public class ScheduleServiceTests
 
         await context.SaveChangesAsync();
 
-        var nextMonday = DateTime.UtcNow.AddDays(((int)DayOfWeek.Monday - (int)DateTime.UtcNow.DayOfWeek + 7) % 7);
-        if (nextMonday <= DateTime.UtcNow) nextMonday = nextMonday.AddDays(7);
+        // Calcular próximo lunes en zona horaria de la clínica (America/Mexico_City = UTC-6)
+        var clinicTimeZone = TimeZoneInfo.FindSystemTimeZoneById("America/Mexico_City");
+        var nowInClinic = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, clinicTimeZone);
+        var nextMonday = nowInClinic.AddDays(((int)DayOfWeek.Monday - (int)nowInClinic.DayOfWeek + 7) % 7);
+        if (nextMonday <= nowInClinic) nextMonday = nextMonday.AddDays(7);
 
         var appointment = new Appointment
                     {
@@ -147,8 +182,8 @@ public class ScheduleServiceTests
                         ClinicId = clinic.Id,
                         DoctorId = doctor.Id,
                         PatientId = patient.Id,
-                        StartAt = nextMonday.Date.AddHours(10), // Lunes 10:00
-                        EndAt = nextMonday.Date.AddHours(10).AddMinutes(30)
+                        StartAt = DateTime.SpecifyKind(nextMonday.Date.AddHours(10), DateTimeKind.Unspecified), // Lunes 10:00 hora local clínica
+                        EndAt = DateTime.SpecifyKind(nextMonday.Date.AddHours(10).AddMinutes(30), DateTimeKind.Unspecified)
                     };
 
         var service = CreateScheduleService(context);
@@ -241,19 +276,10 @@ public class ScheduleServiceTests
 
         await context.SaveChangesAsync();
 
-        var nextMonday = DateTime.UtcNow.AddDays(((int)DayOfWeek.Monday - (int)DateTime.UtcNow.DayOfWeek + 7) % 7);
-        if (nextMonday <= DateTime.UtcNow) nextMonday = nextMonday.AddDays(7);
+        var nextMonday = GetNextMondayInClinicTimeZone();
 
         // Cita que cae en horario de comida (13:00-13:30)
-        var appointment = new Appointment
-        {
-            Id = Guid.NewGuid(),
-            ClinicId = clinic.Id,
-            DoctorId = doctor.Id,
-            PatientId = patient.Id,
-            StartAt = nextMonday.Date.AddHours(13), // 13:00 - inicio de comida
-            EndAt = nextMonday.Date.AddHours(13).AddMinutes(30)
-        };
+        var appointment = CreateAppointmentInClinicTime(clinic.Id, doctor.Id, patient.Id, nextMonday, new TimeOnly(13, 0), new TimeOnly(13, 30));
 
         var service = CreateScheduleService(context);
 
@@ -286,20 +312,11 @@ public class ScheduleServiceTests
 
         await context.SaveChangesAsync();
 
-        // Calcular próximo lunes dentro de 50 días (más de 45 días)
-        var farFuture = DateTime.UtcNow.AddDays(50);
-        var nextMonday = farFuture.AddDays(((int)DayOfWeek.Monday - (int)farFuture.DayOfWeek + 7) % 7);
-        if (nextMonday <= farFuture) nextMonday = nextMonday.AddDays(7);
+        // Calcular próximo lunes dentro de 50 días (más de 45 días) en zona horaria clínica
+        var farFutureClinic = GetNowInClinicTimeZone().AddDays(50);
+        var nextMonday = GetNextMondayInClinicTimeZone(farFutureClinic);
 
-        var appointment = new Appointment
-        {
-            Id = Guid.NewGuid(),
-            ClinicId = clinic.Id,
-            DoctorId = doctor.Id,
-            PatientId = patient.Id,
-            StartAt = nextMonday.Date.AddHours(10), // Lunes a las 10:00 (dentro del horario)
-            EndAt = nextMonday.Date.AddHours(10).AddMinutes(30)
-        };
+        var appointment = CreateAppointmentInClinicTime(clinic.Id, doctor.Id, patient.Id, nextMonday, new TimeOnly(10, 0), new TimeOnly(10, 30));
 
         var service = CreateScheduleService(context);
 
@@ -331,20 +348,11 @@ public class ScheduleServiceTests
 
         await context.SaveChangesAsync();
 
-        // Calcular próximo lunes dentro de 50 días
-        var farFuture = DateTime.UtcNow.AddDays(50);
-        var nextMonday = farFuture.AddDays(((int)DayOfWeek.Monday - (int)farFuture.DayOfWeek + 7) % 7);
-        if (nextMonday <= farFuture) nextMonday = nextMonday.AddDays(7);
+        // Calcular próximo lunes dentro de 50 días en zona horaria clínica
+        var farFutureClinic = GetNowInClinicTimeZone().AddDays(50);
+        var nextMonday = GetNextMondayInClinicTimeZone(farFutureClinic);
 
-        var appointment = new Appointment
-        {
-            Id = Guid.NewGuid(),
-            ClinicId = clinic.Id,
-            DoctorId = doctor.Id,
-            PatientId = patient.Id,
-            StartAt = nextMonday.Date.AddHours(10), // Lunes a las 10:00 (dentro del horario)
-            EndAt = nextMonday.Date.AddHours(10).AddMinutes(30)
-        };
+        var appointment = CreateAppointmentInClinicTime(clinic.Id, doctor.Id, patient.Id, nextMonday, new TimeOnly(10, 0), new TimeOnly(10, 30));
 
         var service = CreateScheduleService(context);
 
@@ -374,7 +382,7 @@ public class ScheduleServiceTests
             context.DoctorSchedules.Add(schedule);
 
             // Asegurar que el festivo caiga en lunes
-            var holidayDate = DateTime.UtcNow.AddDays(((int)DayOfWeek.Monday - (int)DateTime.UtcNow.DayOfWeek + 7) % 7).Date;
+            var holidayDate = GetNextMondayInClinicTimeZone();
             var holiday = new ClinicHoliday
             {
                 ClinicId = clinic.Id,
@@ -386,15 +394,7 @@ public class ScheduleServiceTests
 
             await context.SaveChangesAsync();
 
-            var appointment = new Appointment
-            {
-                Id = Guid.NewGuid(),
-                ClinicId = clinic.Id,
-                DoctorId = doctor.Id,
-                PatientId = patient.Id,
-                StartAt = holidayDate.AddHours(10),
-                EndAt = holidayDate.AddHours(10).AddMinutes(30)
-            };
+            var appointment = CreateAppointmentInClinicTime(clinic.Id, doctor.Id, patient.Id, holidayDate, new TimeOnly(10, 0), new TimeOnly(10, 30));
 
             var service = CreateScheduleService(context);
 
@@ -425,7 +425,7 @@ public class ScheduleServiceTests
             context.DoctorSchedules.Add(schedule);
 
             // Asegurar que las vacaciones incluyan un lunes
-            var vacationStart = DateTime.UtcNow.AddDays(((int)DayOfWeek.Monday - (int)DateTime.UtcNow.DayOfWeek + 7) % 7).Date;
+            var vacationStart = GetNextMondayInClinicTimeZone();
             var vacation = new DoctorVacation
             {
                 ClinicId = clinic.Id,
@@ -437,15 +437,7 @@ public class ScheduleServiceTests
 
             await context.SaveChangesAsync();
 
-            var appointment = new Appointment
-            {
-                Id = Guid.NewGuid(),
-                ClinicId = clinic.Id,
-                DoctorId = doctor.Id,
-                PatientId = patient.Id,
-                StartAt = vacationStart.AddHours(10),
-                EndAt = vacationStart.AddHours(10).AddMinutes(30)
-            };
+            var appointment = CreateAppointmentInClinicTime(clinic.Id, doctor.Id, patient.Id, vacationStart, new TimeOnly(10, 0), new TimeOnly(10, 30));
 
             var service = CreateScheduleService(context);
 
@@ -473,14 +465,15 @@ public class ScheduleServiceTests
 
         await context.SaveChangesAsync();
 
-        // Periodo de 6 días para tener exactamente 1 lunes
-        var startDate = DateTime.UtcNow.AddDays(((int)DayOfWeek.Monday - (int)DateTime.UtcNow.DayOfWeek + 7) % 7);
-        var endDate = startDate.AddDays(6);
+        // Periodo de 6 días para tener exactamente 1 lunes (en zona horaria clínica)
+        var startDateClinic = GetNextMondayInClinicTimeZone();
+        var startDateUtc = TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(startDateClinic, DateTimeKind.Unspecified), ClinicTimeZone);
+        var endDateUtc = startDateUtc.AddDays(6);
 
         var service = CreateScheduleService(context);
 
         // Act
-        var slots = await service.GenerateSlotsForPeriodAsync(clinic.Id, doctor.Id, startDate, endDate);
+        var slots = await service.GenerateSlotsForPeriodAsync(clinic.Id, doctor.Id, startDateUtc, endDateUtc);
 
         // Assert
         Assert.NotEmpty(slots);
@@ -503,28 +496,28 @@ public class ScheduleServiceTests
         var schedule = CreateSchedule(clinic.Id, doctor.Id, DayOfWeek.Monday, new TimeOnly(9, 0), new TimeOnly(12, 0), null, null, 60);
         context.DoctorSchedules.Add(schedule);
 
-        var holidayDate = DateTime.UtcNow.AddDays(((int)DayOfWeek.Monday - (int)DateTime.UtcNow.DayOfWeek + 7) % 7).Date;
+        var holidayDateClinic = GetNextMondayInClinicTimeZone();
         var holiday = new ClinicHoliday
         {
             ClinicId = clinic.Id,
             Name = "Festivo Test",
-            Date = holidayDate,
+            Date = holidayDateClinic,
             IsFullDay = true
         };
         context.ClinicHolidays.Add(holiday);
 
         await context.SaveChangesAsync();
 
-        var startDate = holidayDate;
-        var endDate = startDate.AddDays(7);
+        var startDateUtc = TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(holidayDateClinic, DateTimeKind.Unspecified), ClinicTimeZone);
+        var endDateUtc = startDateUtc.AddDays(7);
 
         var service = CreateScheduleService(context);
 
         // Act
-        var slots = await service.GenerateSlotsForPeriodAsync(clinic.Id, doctor.Id, startDate, endDate);
+        var slots = await service.GenerateSlotsForPeriodAsync(clinic.Id, doctor.Id, startDateUtc, endDateUtc);
 
         // Assert - no debe haber slots en el día festivo
-        var holidaySlots = slots.Where(s => s.StartAt.Date == holidayDate).ToList();
+        var holidaySlots = slots.Where(s => s.StartAt.Date == holidayDateClinic).ToList();
         Assert.Empty(holidaySlots);
     }
 
@@ -542,28 +535,28 @@ public class ScheduleServiceTests
         var schedule = CreateSchedule(clinic.Id, doctor.Id, DayOfWeek.Monday, new TimeOnly(9, 0), new TimeOnly(12, 0), null, null, 60);
         context.DoctorSchedules.Add(schedule);
 
-        var vacationStart = DateTime.UtcNow.AddDays(((int)DayOfWeek.Monday - (int)DateTime.UtcNow.DayOfWeek + 7) % 7).Date;
+        var vacationStartClinic = GetNextMondayInClinicTimeZone();
         var vacation = new DoctorVacation
         {
             ClinicId = clinic.Id,
             DoctorId = doctor.Id,
-            StartDate = vacationStart,
-            EndDate = vacationStart.AddDays(2)
+            StartDate = vacationStartClinic,
+            EndDate = vacationStartClinic.AddDays(2)
         };
         context.DoctorVacations.Add(vacation);
 
         await context.SaveChangesAsync();
 
-        var startDate = vacationStart;
-        var endDate = startDate.AddDays(7);
+        var startDateUtc = TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(vacationStartClinic, DateTimeKind.Unspecified), ClinicTimeZone);
+        var endDateUtc = startDateUtc.AddDays(7);
 
         var service = CreateScheduleService(context);
 
         // Act
-        var slots = await service.GenerateSlotsForPeriodAsync(clinic.Id, doctor.Id, startDate, endDate);
+        var slots = await service.GenerateSlotsForPeriodAsync(clinic.Id, doctor.Id, startDateUtc, endDateUtc);
 
         // Assert - no debe haber slots en días de vacaciones
-        var vacationSlots = slots.Where(s => s.StartAt.Date >= vacationStart && s.StartAt.Date <= vacationStart.AddDays(2)).ToList();
+        var vacationSlots = slots.Where(s => s.StartAt.Date >= vacationStartClinic && s.StartAt.Date <= vacationStartClinic.AddDays(2)).ToList();
         Assert.Empty(vacationSlots);
     }
 
@@ -584,13 +577,14 @@ public class ScheduleServiceTests
 
         await context.SaveChangesAsync();
 
-        var startDate = DateTime.UtcNow.AddDays(((int)DayOfWeek.Monday - (int)DateTime.UtcNow.DayOfWeek + 7) % 7);
-        var endDate = startDate.AddDays(7);
+        var startDateClinic = GetNextMondayInClinicTimeZone();
+        var startDateUtc = TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(startDateClinic, DateTimeKind.Unspecified), ClinicTimeZone);
+        var endDateUtc = startDateUtc.AddDays(7);
 
         var service = CreateScheduleService(context);
 
         // Act
-        var slots = await service.GenerateSlotsForPeriodAsync(clinic.Id, doctor.Id, startDate, endDate);
+        var slots = await service.GenerateSlotsForPeriodAsync(clinic.Id, doctor.Id, startDateUtc, endDateUtc);
 
         // Assert - no debe haber slots que caigan en 13:00-14:00
         var mondaySlots = slots.Where(s => s.StartAt.DayOfWeek == DayOfWeek.Monday).ToList();

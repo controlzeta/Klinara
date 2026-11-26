@@ -217,8 +217,9 @@ public class PatientPortalServiceTests
         var result = await service.SendVerificationEmailAsync("patient@test.com", "test-clinic");
 
         Assert.True(result.Success);
+        var expectedPurpose = OtpPurposes.EmailVerificationForClinic(clinic.Id);
         userManager.Verify(manager => manager.GenerateUserTokenAsync(
-                It.IsAny<ApplicationUser>(), TokenOptions.DefaultEmailProvider, OtpPurposes.EmailVerification),
+                It.IsAny<ApplicationUser>(), TokenOptions.DefaultEmailProvider, expectedPurpose),
             Times.Once);
         userManager.Verify(manager => manager.GenerateUserTokenAsync(
                 It.IsAny<ApplicationUser>(), TokenOptions.DefaultEmailProvider, OtpPurposes.Login),
@@ -325,9 +326,10 @@ public class PatientPortalServiceTests
         var userManagerMock = CreateMockUserManager(context);
         var service = CreatePortalService(context, configuration, emailSender.Object, userManagerMock);
 
-        // Generar OTP usando el mismo mock que el service
+        // Generar OTP usando el mismo mock que el service (con propósito scoped a clínica)
         var otpService = new OtpService(userManagerMock.Object, configuration);
-        var otpCode = await otpService.GenerateOtpAsync(user, OtpPurposes.EmailVerification);
+        var otpPurpose = OtpPurposes.EmailVerificationForClinic(clinic.Id);
+        var otpCode = await otpService.GenerateOtpAsync(user, otpPurpose);
 
         // Act
         var result = await service.ValidateOtpAndCreatePortalTokenAsync("test@test.com", otpCode, "test-clinic");
@@ -404,8 +406,8 @@ public class PatientPortalServiceTests
         var tokenService = new PatientTokenService(context, tokenLogger);
         var portalToken = await tokenService.CreatePortalAccessTokenAsync(patient.Id, clinic.Id);
 
-        // Usar fecha fija (lunes 7 dic 2026)
-        var fixedMonday = new DateTime(2026, 12, 7, 10, 0, 0, DateTimeKind.Utc);
+        // Usar fecha fija (lunes 7 dic 2026) - hora local clínica
+        var fixedMonday = new DateTime(2026, 12, 7, 10, 0, 0, DateTimeKind.Unspecified);
         Assert.Equal(DayOfWeek.Monday, fixedMonday.DayOfWeek);
 
         var bookDto = new BookAppointmentDto(
@@ -841,7 +843,7 @@ public class PatientPortalServiceTests
         var tokenService = new PatientTokenService(context, tokenLogger);
         var portalToken = await tokenService.CreatePortalAccessTokenAsync(patient.Id, clinic.Id);
 
-        var targetMonday = new DateTime(2026, 12, 7, 10, 0, 0, DateTimeKind.Utc);
+        var targetMonday = new DateTime(2026, 12, 7, 10, 0, 0, DateTimeKind.Unspecified);
         var bookDto = new BookAppointmentDto(
             doctor.Id,
             targetMonday,

@@ -98,7 +98,7 @@ var schedule = new DoctorSchedule
     LunchEnd = new TimeOnly(14, 0),
     SlotDurationMinutes = 30,
     IsActive = true,
-    EffectiveFrom = DateTime.UtcNow.Date.AddDays(-30),
+    EffectiveFrom = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-30),
     CreatedAt = DateTime.UtcNow
 };
 context.DoctorSchedules.Add(schedule);

@@ -59,3 +59,5 @@ nunit-*.xml
 /.vs/Klinara.slnx/config
 /.vs/Klinara.slnx/FileContentIndex
 /Klinara.Web/appsettings.json
+/.vs/Klinara.slnx/DesignTimeBuild
+/.vs/ProjectEvaluation

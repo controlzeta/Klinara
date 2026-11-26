@@ -116,6 +116,7 @@ private sealed class TestFixture : IAsyncDisposable {
 - `@attribute [AllowAnonymous]` para páginas públicas (portal paciente)
 - `@using` en `_Imports.razor` o en cada archivo
 - `AuthorizeView` con `<Authorized>` / `<NotAuthorized>` / `<AuthorizeView Policy="...">`
+- **Todos los textos de UI (labels, placeholders, mensajes, validaciones, botones) DEBEN estar en español** — el proyecto es para mercado mexicano y español es el idioma obligatorio
 
 ### SQL / EF Core
 - Índices en FKs y columnas de filtro frecuente (`ClinicId`, `StartAt`, `Status`)

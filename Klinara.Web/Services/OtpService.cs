@@ -52,4 +52,8 @@ public static class OtpPurposes
     public const string EmailVerification = "EMAIL_VERIFICATION";
     public const string PasswordReset = "PASSWORD_RESET";
     public const string PatientPortalAccess = "PATIENT_PORTAL";
+
+    // Propósitos con alcance por clínica (para aislamiento multi-tenant)
+    public static string EmailVerificationForClinic(Guid clinicId) => $"{EmailVerification}:{clinicId}";
+    public static string PatientPortalAccessForClinic(Guid clinicId) => $"{PatientPortalAccess}:{clinicId}";
 }

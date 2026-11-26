@@ -146,26 +146,44 @@ public class SlotGeneratorService : BackgroundService
         ApplicationDbContext context,
         Guid clinicId,
         DoctorSchedule schedule,
-        DateTime startDate,
-        DateTime endDate,
+        DateTime startDateUtc,
+        DateTime endDateUtc,
         CancellationToken cancellationToken)
     {
         int created = 0;
 
-        // Verificar si el horario está vigente en el período
-        if (schedule.EffectiveFrom.Date > endDate) return 0;
-        if (schedule.EffectiveTo.HasValue && schedule.EffectiveTo.Value.Date < startDate) return 0;
+        // Obtener zona horaria de la clínica para convertir fechas UTC a local
+        var clinic = await context.Clinics.FindAsync(clinicId);
+        TimeZoneInfo clinicTimeZone;
+        try
+        {
+            clinicTimeZone = clinic?.TimeZone ?? TimeZoneInfo.FindSystemTimeZoneById("America/Mexico_City");
+        }
+        catch (System.TimeZoneNotFoundException)
+        {
+            clinicTimeZone = TimeZoneInfo.FindSystemTimeZoneById("America/Mexico_City");
+        }
 
-        var effectiveStart = schedule.EffectiveFrom.Date > startDate ? schedule.EffectiveFrom.Date : startDate;
-        var effectiveEnd = schedule.EffectiveTo.HasValue && schedule.EffectiveTo.Value.Date < endDate
+        var startDateLocal = TimeZoneInfo.ConvertTimeFromUtc(startDateUtc, clinicTimeZone).Date;
+        var endDateLocal = TimeZoneInfo.ConvertTimeFromUtc(endDateUtc, clinicTimeZone).Date;
+
+        // Verificar si el horario está vigente en el período
+        if (schedule.EffectiveFrom.Date > endDateLocal) return 0;
+        if (schedule.EffectiveTo.HasValue && schedule.EffectiveTo.Value.Date < startDateLocal) return 0;
+
+        var effectiveStart = schedule.EffectiveFrom.Date > startDateLocal ? schedule.EffectiveFrom.Date : startDateLocal;
+        var effectiveEnd = schedule.EffectiveTo.HasValue && schedule.EffectiveTo.Value.Date < endDateLocal
             ? schedule.EffectiveTo.Value.Date
-            : endDate;
+            : endDateLocal;
+
+        var effectiveStartDt = effectiveStart;
+        var effectiveEndDt = effectiveEnd.AddDays(1).AddTicks(-1);
 
         // Obtener festivos de la clínica en el período
         var holidays = await context.ClinicHolidays
             .Where(h => h.ClinicId == clinicId
-                && h.Date >= effectiveStart
-                && h.Date <= effectiveEnd)
+                && h.Date >= effectiveStartDt
+                && h.Date <= effectiveEndDt)
             .ToListAsync(cancellationToken);
 
         var holidayDates = holidays
@@ -181,8 +199,8 @@ public class SlotGeneratorService : BackgroundService
         var vacations = await context.DoctorVacations
             .Where(v => v.DoctorId == schedule.DoctorId
                 && v.ClinicId == clinicId
-                && v.StartDate <= effectiveEnd
-                && v.EndDate >= effectiveStart)
+                && v.StartDate <= effectiveEndDt
+                && v.EndDate >= effectiveStartDt)
             .ToListAsync(cancellationToken);
 
         // Iterar días en el período efectivo

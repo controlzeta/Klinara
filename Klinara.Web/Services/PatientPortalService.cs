@@ -105,8 +105,9 @@ public class PatientPortalService : IPatientPortalService
                 _logger.LogInformation("Usuario portal creado: {UserId} para email {Email}", portalUser.Id, email);
             }
 
-            // Generar y enviar un único OTP con el propósito de verificación de email
-            var otpCode = await _otpService.GenerateOtpAsync(portalUser, OtpPurposes.EmailVerification);
+            // Generar y enviar un único OTP con el propósito de verificación de email (scoped a clínica)
+                        var otpPurpose = OtpPurposes.EmailVerificationForClinic(clinic.Id);
+                        var otpCode = await _otpService.GenerateOtpAsync(portalUser, otpPurpose);
 
             // Enviar email real (SmtpEmailSender en prod, LoggingEmailSender en dev)
             await SendOtpEmailAsync(email, otpCode, clinic.Name);
@@ -142,17 +143,18 @@ public class PatientPortalService : IPatientPortalService
                 return new PortalTokenResult(false, Error: ErrorCodes.UserNotFound);
             }
 
-            // Validar OTP
-            var isValid = await _otpService.ValidateOtpAsync(portalUser, code, OtpPurposes.EmailVerification);
+            // Validar OTP (con propósito scoped a clínica)
+                        var otpPurpose = OtpPurposes.EmailVerificationForClinic(clinic.Id);
+                        var isValid = await _otpService.ValidateOtpAsync(portalUser, code, otpPurpose);
 
-            if (!isValid)
-            {
-                _logger.LogWarning("OTP inválido para {Email} en clínica {ClinicId}", email, clinic.Id);
-                return new PortalTokenResult(false, Error: ErrorCodes.OtpInvalid);
-            }
+                        if (!isValid)
+                        {
+                            _logger.LogWarning("OTP inválido para {Email} en clínica {ClinicId}", email, clinic.Id);
+                            return new PortalTokenResult(false, Error: ErrorCodes.OtpInvalid);
+                        }
 
-            // Invalidar OTP usado
-            await _otpService.InvalidateOtpAsync(portalUser, OtpPurposes.EmailVerification);
+                        // Invalidar OTP usado
+                        await _otpService.InvalidateOtpAsync(portalUser, otpPurpose);
 
             // Buscar paciente
             var patient = await _context.Patients

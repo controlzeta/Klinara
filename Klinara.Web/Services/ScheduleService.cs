@@ -230,8 +230,8 @@ public class ScheduleService : IScheduleService
             .Where(ds => ds.ClinicId == clinicId
                 && ds.DoctorId == doctorId
                 && ds.IsActive
-                && ds.EffectiveFrom <= endDate
-                && (ds.EffectiveTo == null || ds.EffectiveTo >= startDate))
+                && ds.EffectiveFrom <= endDateLocal.Date
+                && (ds.EffectiveTo == null || ds.EffectiveTo >= startDateLocal.Date))
             .ToListAsync();
 
         if (!schedules.Any())
@@ -397,7 +397,24 @@ public class ScheduleService : IScheduleService
 
         if (effectiveAt.HasValue)
         {
-            query = query.Where(ds => ds.EffectiveFrom <= effectiveAt.Value && (ds.EffectiveTo == null || ds.EffectiveTo >= effectiveAt.Value));
+            // effectiveAt viene en UTC o local; obtener fecha local de la clínica
+            var clinic = await _context.Clinics.FindAsync(clinicId);
+            TimeZoneInfo clinicTimeZone;
+            try
+            {
+                clinicTimeZone = clinic?.TimeZone ?? TimeZoneInfo.FindSystemTimeZoneById("America/Mexico_City");
+            }
+            catch (System.TimeZoneNotFoundException)
+            {
+                clinicTimeZone = TimeZoneInfo.FindSystemTimeZoneById("America/Mexico_City");
+            }
+
+            var effectiveAtLocal = effectiveAt.Value.Kind == DateTimeKind.Utc
+                ? TimeZoneInfo.ConvertTimeFromUtc(effectiveAt.Value, clinicTimeZone)
+                : DateTime.SpecifyKind(effectiveAt.Value, DateTimeKind.Unspecified);
+            var effectiveAtDate = effectiveAtLocal.Date;
+
+            query = query.Where(ds => ds.EffectiveFrom <= effectiveAtDate && (ds.EffectiveTo == null || ds.EffectiveTo >= effectiveAtDate));
         }
 
         return await query.OrderBy(ds => ds.DayOfWeek).ThenBy(ds => ds.StartTime).ToListAsync();
