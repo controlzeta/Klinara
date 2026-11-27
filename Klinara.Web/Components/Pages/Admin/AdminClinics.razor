@@ -1,0 +1,341 @@
+@page "/admin/clinics"
+@layout AdminLayout
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using System.ComponentModel.DataAnnotations
+@using Klinara.Web.Data
+@using Klinara.Web.Services
+@using Klinara.Web.Authorization
+@attribute [Authorize(Policy = "CanViewAllClinics")]
+@rendermode InteractiveServer
+@inject ApplicationDbContext DbContext
+@inject IClinicService ClinicService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<PageTitle>Clínicas - Administración Global</PageTitle>
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold text-primary mb-1">Gestión de Clínicas</h2>
+            <p class="text-muted mb-0">Administración global de todas las clínicas de la plataforma</p>
+        </div>
+        <button class="btn btn-primary" @onclick="() => OpenModal(null)">
+            <i class="bi bi-building-add me-1"></i> Nueva Clínica
+        </button>
+    </div>
+
+    @if (!string.IsNullOrEmpty(_statusMessage))
+    {
+        <div class="alert alert-info alert-dismissible fade show" role="alert">
+            @_statusMessage
+            <button type="button" class="btn-close" @onclick="() => _statusMessage = null"></button>
+        </div>
+    }
+
+    @if (_isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-2 text-muted">Cargando clínicas...</p>
+        </div>
+    }
+    else if (_clinics == null || !_clinics.Any())
+    {
+        <div class="card p-5 text-center shadow-sm">
+            <i class="bi bi-building display-4 text-muted mb-3"></i>
+            <h5>No hay clínicas registradas</h5>
+            <p class="text-muted">Crea la primera clínica para comenzar.</p>
+        </div>
+    }
+    else
+    {
+        <div class="card border-0 shadow-sm">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Subdominio</th>
+                            <th>Contacto</th>
+                            <th>Zona Horaria</th>
+                            <th>Estado</th>
+                            <th>Creada</th>
+                            <th class="text-end">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var clinic in _clinics)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="fw-semibold">@clinic.Name</div>
+                                    <small class="text-muted">@clinic.Description</small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-light text-dark border">@clinic.Subdomain</span>
+                                </td>
+                                <td>
+                                    <div>@(clinic.ContactEmail ?? "Sin email")</div>
+                                    <small class="text-muted">@(clinic.Phone ?? "Sin teléfono")</small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-light text-dark border">@clinic.TimeZoneId</span>
+                                </td>
+                                <td>
+                                    <span class="badge @(clinic.IsActive ? "bg-success" : "bg-danger")">
+                                        @(clinic.IsActive ? "Activa" : "Inactiva")
+                                    </span>
+                                </td>
+                                <td>@clinic.CreatedAt.ToString("dd/MM/yyyy")</td>
+                                <td class="text-end">
+                                    <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => OpenModal(clinic)">
+                                        <i class="bi bi-pencil"></i> Editar
+                                    </button>
+                                    <button class="btn btn-sm @(clinic.IsActive ? "btn-outline-danger" : "btn-outline-success")" @onclick="() => ToggleActive(clinic)">
+                                        @(clinic.IsActive ? "<i class=\"bi bi-x-circle\"></i> Desactivar" : "<i class=\"bi bi-check-circle\"></i> Activar")
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+@if (_showModal)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">@(_editingClinic == null ? "Nueva Clínica" : "Editar Clínica")</h5>
+                    <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                </div>
+                <div class="modal-body">
+                    <EditForm Model="_formModel" OnValidSubmit="SaveClinic">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary class="text-danger" />
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Nombre *</label>
+                                <InputText class="form-control" @bind-Value="_formModel.Name" placeholder="Ej. Clínica San José" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Subdominio *</label>
+                                <InputText class="form-control" @bind-Value="_formModel.Subdomain" placeholder="clinica-san-jose" />
+                                <div class="form-text">Solo minúsculas, números y guiones. Único en la plataforma.</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Email de Contacto</label>
+                                <InputText class="form-control" @bind-Value="_formModel.ContactEmail" placeholder="admin@clinica.com" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Teléfono</label>
+                                <InputText class="form-control" @bind-Value="_formModel.Phone" placeholder="+52 55 1234 5678" />
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-semibold">Dirección</label>
+                                <InputText class="form-control" @bind-Value="_formModel.Address" placeholder="Calle, número, colonia, ciudad" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Zona Horaria *</label>
+                                <InputSelect class="form-select" @bind-Value="_formModel.TimeZoneId">
+                                    @foreach (var tz in _timeZones)
+                                    {
+                                        <option value="@tz.Id">@tz.DisplayName</option>
+                                    }
+                                </InputSelect>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Estado</label>
+                                <div class="form-check form-switch mt-2">
+                                    <InputCheckbox class="form-check-input" @bind-Value="_formModel.IsActive" />
+                                    <label class="form-check-label fw-semibold">Activa</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer mt-4">
+                            <button type="button" class="btn btn-secondary" @onclick="CloseModal">Cancelar</button>
+                            <button type="submit" class="btn btn-primary">@(_editingClinic == null ? "Crear Clínica" : "Guardar Cambios")</button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<Clinic>? _clinics;
+    private bool _isLoading = true;
+    private bool _showModal = false;
+    private string? _statusMessage;
+    private Clinic? _editingClinic;
+    private ClinicFormModel _formModel = new();
+    private List<TimeZoneInfo> _timeZones = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _timeZones = TimeZoneInfo.GetSystemTimeZones().OrderBy(tz => tz.DisplayName).ToList();
+        await LoadClinicsAsync();
+    }
+
+    private async Task LoadClinicsAsync()
+    {
+        _isLoading = true;
+        _clinics = await DbContext.Clinics
+            .OrderByDescending(c => c.CreatedAt)
+            .ToListAsync();
+        _isLoading = false;
+    }
+
+    private void OpenModal(Clinic? clinic)
+    {
+        _editingClinic = clinic;
+        if (clinic == null)
+        {
+            _formModel = new ClinicFormModel
+            {
+                TimeZoneId = "America/Mexico_City",
+                IsActive = true
+            };
+        }
+        else
+        {
+            _formModel = new ClinicFormModel
+            {
+                Id = clinic.Id,
+                Name = clinic.Name,
+                Subdomain = clinic.Subdomain,
+                Description = clinic.Description,
+                ContactEmail = clinic.ContactEmail,
+                Phone = clinic.Phone,
+                Address = clinic.Address,
+                TimeZoneId = clinic.TimeZoneId,
+                IsActive = clinic.IsActive
+            };
+        }
+        _showModal = true;
+    }
+
+    private void CloseModal()
+    {
+        _showModal = false;
+        _editingClinic = null;
+        _formModel = new ClinicFormModel { TimeZoneId = "America/Mexico_City", IsActive = true };
+    }
+
+    private async Task SaveClinic()
+    {
+        try
+        {
+            if (_editingClinic == null)
+            {
+                // Create
+                var exists = await DbContext.Clinics.AnyAsync(c => c.Subdomain == _formModel.Subdomain);
+                if (exists)
+                {
+                    _statusMessage = "El subdominio ya está en uso.";
+                    return;
+                }
+
+                var clinic = new Clinic
+                {
+                    Name = _formModel.Name,
+                    Subdomain = _formModel.Subdomain,
+                    Description = _formModel.Description,
+                    ContactEmail = _formModel.ContactEmail,
+                    Phone = _formModel.Phone,
+                    Address = _formModel.Address,
+                    TimeZoneId = _formModel.TimeZoneId,
+                    IsActive = _formModel.IsActive,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                DbContext.Clinics.Add(clinic);
+                await DbContext.SaveChangesAsync();
+                _statusMessage = $"Clínica '{clinic.Name}' creada exitosamente.";
+            }
+            else
+            {
+                // Update
+                var exists = await DbContext.Clinics.AnyAsync(c => c.Subdomain == _formModel.Subdomain && c.Id != _editingClinic.Id);
+                if (exists)
+                {
+                    _statusMessage = "El subdominio ya está en uso.";
+                    return;
+                }
+
+                _editingClinic.Name = _formModel.Name;
+                _editingClinic.Subdomain = _formModel.Subdomain;
+                _editingClinic.Description = _formModel.Description;
+                _editingClinic.ContactEmail = _formModel.ContactEmail;
+                _editingClinic.Phone = _formModel.Phone;
+                _editingClinic.Address = _formModel.Address;
+                _editingClinic.TimeZoneId = _formModel.TimeZoneId;
+                _editingClinic.IsActive = _formModel.IsActive;
+                _editingClinic.UpdatedAt = DateTime.UtcNow;
+
+                await DbContext.SaveChangesAsync();
+                _statusMessage = $"Clínica '{_editingClinic.Name}' actualizada exitosamente.";
+            }
+
+            CloseModal();
+            await LoadClinicsAsync();
+        }
+        catch (Exception ex)
+        {
+            _statusMessage = $"Error: {ex.Message}";
+        }
+    }
+
+    private async Task ToggleActive(Clinic clinic)
+    {
+        try
+        {
+            clinic.IsActive = !clinic.IsActive;
+            clinic.UpdatedAt = DateTime.UtcNow;
+            await DbContext.SaveChangesAsync();
+            _statusMessage = $"Clínica '{clinic.Name}' {(clinic.IsActive ? "activada" : "desactivada")}.";
+            await LoadClinicsAsync();
+        }
+        catch (Exception ex)
+        {
+            _statusMessage = $"Error: {ex.Message}";
+        }
+    }
+
+    private class ClinicFormModel
+    {
+        public Guid Id { get; set; }
+        [Required(ErrorMessage = "El nombre es obligatorio")]
+        [MaxLength(200)]
+        public string Name { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "El subdominio es obligatorio")]
+        [MaxLength(100)]
+        [RegularExpression(@"^[a-z0-9-]+$", ErrorMessage = "Solo minúsculas, números y guiones")]
+        public string Subdomain { get; set; } = string.Empty;
+
+        [MaxLength(500)]
+        public string? Description { get; set; }
+
+        [EmailAddress(ErrorMessage = "Email inválido")]
+        [MaxLength(256)]
+        public string? ContactEmail { get; set; }
+
+        [MaxLength(50)]
+        public string? Phone { get; set; }
+
+        [MaxLength(200)]
+        public string? Address { get; set; }
+
+        [Required(ErrorMessage = "La zona horaria es obligatoria")]
+        public string TimeZoneId { get; set; } = "America/Mexico_City";
+
+        public bool IsActive { get; set; } = true;
+    }
+}

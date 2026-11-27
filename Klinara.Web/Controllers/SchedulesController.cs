@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
+using Klinara.Web.Authorization;
 using Klinara.Web.Data;
 using Klinara.Web.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -24,6 +26,22 @@ public class SchedulesController : ControllerBase
         _context = context;
     }
 
+    private Guid? GetCurrentUserClinicId()
+    {
+        var claim = User.FindFirst("ClinicId")?.Value;
+        return Guid.TryParse(claim, out var id) ? id : null;
+    }
+
+    private bool IsPlatformAdmin() => User.IsInRole(KlinaraRoles.PlatformAdmin);
+
+    private ActionResult ValidateClinicAccess(Guid clinicId)
+    {
+        var userClinicId = GetCurrentUserClinicId();
+        if (userClinicId.HasValue && clinicId != userClinicId.Value && !IsPlatformAdmin())
+            return Forbid();
+        return null;
+    }
+
     // GET: api/schedules/clinic/{clinicId}/doctor/{doctorId}
     [HttpGet("clinic/{clinicId:guid}/doctor/{doctorId:guid}")]
     [Authorize(Policy = "CanManageSchedules")]
@@ -32,6 +50,9 @@ public class SchedulesController : ControllerBase
         Guid doctorId,
         [FromQuery] DateTime? effectiveAt = null)
     {
+        var validation = ValidateClinicAccess(clinicId);
+        if (validation != null) return validation;
+
         var schedules = await _scheduleService.GetDoctorSchedulesAsync(clinicId, doctorId, effectiveAt);
         return Ok(schedules);
     }
@@ -45,6 +66,9 @@ public class SchedulesController : ControllerBase
         [FromQuery] DateTime startDate,
         [FromQuery] DateTime endDate)
     {
+        var validation = ValidateClinicAccess(clinicId);
+        if (validation != null) return validation;
+
         if (endDate < startDate || (endDate - startDate).TotalDays > 90)
             return BadRequest("Rango de fechas inválido (máx 90 días)");
 
@@ -61,6 +85,9 @@ public class SchedulesController : ControllerBase
         [FromQuery] DateTime startDate,
         [FromQuery] DateTime endDate)
     {
+        var validation = ValidateClinicAccess(clinicId);
+        if (validation != null) return validation;
+
         var slots = await _scheduleService.GenerateSlotsForPeriodAsync(clinicId, doctorId, startDate, endDate);
         var created = slots.Count(s => !s.IsBooked && !s.IsBlocked);
         return Ok(new { Created = created, Total = slots.Count });
@@ -76,6 +103,9 @@ public class SchedulesController : ControllerBase
         [FromQuery] DateTime endAt,
         [FromQuery] Guid? excludeAppointmentId = null)
     {
+        var validation = ValidateClinicAccess(clinicId);
+        if (validation != null) return validation;
+
         var available = await _scheduleService.IsSlotAvailableAsync(clinicId, doctorId, startAt, endAt, excludeAppointmentId);
         return Ok(new { Available = available });
     }
@@ -86,6 +116,14 @@ public class SchedulesController : ControllerBase
     [Authorize(Policy = "CanManageSchedules")]
     public async Task<ActionResult<DoctorSchedule>> CreateSchedule([FromBody] DoctorScheduleDto dto)
     {
+        var validation = ValidateClinicAccess(dto.ClinicId);
+        if (validation != null) return validation;
+
+        // Verify doctor belongs to the clinic
+        var doctor = await _context.Users.FindAsync(dto.DoctorId);
+        if (doctor == null || doctor.ClinicId != dto.ClinicId)
+            return BadRequest("El doctor no pertenece a esta clínica");
+
         var schedule = new DoctorSchedule
         {
             Id = Guid.NewGuid(),
@@ -117,6 +155,14 @@ public class SchedulesController : ControllerBase
         var schedule = await _context.DoctorSchedules.FindAsync(id);
         if (schedule == null) return NotFound();
 
+        var validation = ValidateClinicAccess(schedule.ClinicId);
+        if (validation != null) return validation;
+
+        // Verify doctor belongs to the clinic
+        var doctor = await _context.Users.FindAsync(dto.DoctorId);
+        if (doctor == null || doctor.ClinicId != schedule.ClinicId)
+            return BadRequest("El doctor no pertenece a esta clínica");
+
         schedule.DayOfWeek = dto.DayOfWeek;
         schedule.StartTime = dto.StartTime;
         schedule.EndTime = dto.EndTime;
@@ -138,6 +184,9 @@ public class SchedulesController : ControllerBase
     {
         var schedule = await _context.DoctorSchedules.FindAsync(id);
         if (schedule == null) return NotFound();
+
+        var validation = ValidateClinicAccess(schedule.ClinicId);
+        if (validation != null) return validation;
 
         _context.DoctorSchedules.Remove(schedule);
         await _context.SaveChangesAsync();

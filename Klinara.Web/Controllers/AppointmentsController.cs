@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
+using Klinara.Web.Authorization;
 using Klinara.Web.Data;
 using Klinara.Web.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -24,6 +26,32 @@ public class AppointmentsController : ControllerBase
         _context = context;
     }
 
+    private Guid? GetCurrentUserClinicId()
+    {
+        var claim = User.FindFirst("ClinicId")?.Value;
+        return Guid.TryParse(claim, out var id) ? id : null;
+    }
+
+    private bool IsPlatformAdmin() => User.IsInRole(KlinaraRoles.PlatformAdmin);
+
+    private ActionResult ValidateClinicAccess(Guid clinicId)
+    {
+        var userClinicId = GetCurrentUserClinicId();
+        if (userClinicId.HasValue && clinicId != userClinicId.Value && !IsPlatformAdmin())
+            return Forbid();
+        return null;
+    }
+
+    private async Task<ActionResult> ValidateResourceClinicAccessAsync(Guid resourceId, Func<Guid, Task<Guid?>> getClinicId)
+    {
+        var resourceClinicId = await getClinicId(resourceId);
+        if (!resourceClinicId.HasValue)
+            return NotFound();
+
+        var validation = ValidateClinicAccess(resourceClinicId.Value);
+        return validation;
+    }
+
     // GET: api/appointments/clinic/{clinicId}
     [HttpGet("clinic/{clinicId:guid}")]
     [Authorize(Policy = "CanManageAppointments")]
@@ -32,6 +60,9 @@ public class AppointmentsController : ControllerBase
         [FromQuery] DateTime? startDate = null,
         [FromQuery] DateTime? endDate = null)
     {
+        var validation = ValidateClinicAccess(clinicId);
+        if (validation != null) return validation;
+
         var appointments = await _appointmentService.GetAppointmentsByClinicAsync(clinicId, startDate, endDate);
         return Ok(appointments);
     }
@@ -44,6 +75,12 @@ public class AppointmentsController : ControllerBase
         [FromQuery] DateTime? startDate = null,
         [FromQuery] DateTime? endDate = null)
     {
+        var doctor = await _context.Users.FindAsync(doctorId);
+        if (doctor == null) return NotFound();
+
+        var validation = ValidateClinicAccess(doctor.ClinicId ?? Guid.Empty);
+        if (validation != null) return validation;
+
         var appointments = await _appointmentService.GetAppointmentsByDoctorAsync(doctorId, startDate, endDate);
         return Ok(appointments);
     }
@@ -56,6 +93,12 @@ public class AppointmentsController : ControllerBase
         [FromQuery] DateTime? startDate = null,
         [FromQuery] DateTime? endDate = null)
     {
+        var patient = await _context.Patients.FindAsync(patientId);
+        if (patient == null) return NotFound();
+
+        var validation = ValidateClinicAccess(patient.ClinicId);
+        if (validation != null) return validation;
+
         var appointments = await _appointmentService.GetAppointmentsByPatientAsync(patientId, startDate, endDate);
         return Ok(appointments);
     }
@@ -67,6 +110,10 @@ public class AppointmentsController : ControllerBase
     {
         var appointment = await _appointmentService.GetAppointmentAsync(id);
         if (appointment == null) return NotFound();
+
+        var validation = ValidateClinicAccess(appointment.ClinicId);
+        if (validation != null) return validation;
+
         return Ok(appointment);
     }
 
@@ -75,6 +122,18 @@ public class AppointmentsController : ControllerBase
     [Authorize(Policy = "CanManageAppointments")]
     public async Task<ActionResult<Appointment>> Create([FromBody] CreateAppointmentDto dto)
     {
+        var validation = ValidateClinicAccess(dto.ClinicId);
+        if (validation != null) return validation;
+
+        // Verify doctor and patient belong to the clinic
+        var doctor = await _context.Users.FindAsync(dto.DoctorId);
+        if (doctor == null || doctor.ClinicId != dto.ClinicId)
+            return BadRequest("El doctor no pertenece a esta clínica");
+
+        var patient = await _context.Patients.FindAsync(dto.PatientId);
+        if (patient == null || patient.ClinicId != dto.ClinicId)
+            return BadRequest("El paciente no pertenece a esta clínica");
+
         var appointment = new Appointment
         {
             Id = Guid.NewGuid(),
@@ -102,6 +161,21 @@ public class AppointmentsController : ControllerBase
     [Authorize(Policy = "CanManageAppointments")]
     public async Task<ActionResult<Appointment>> Update(Guid id, [FromBody] UpdateAppointmentDto dto)
     {
+        var existing = await _context.Appointments.FindAsync(id);
+        if (existing == null) return NotFound();
+
+        var validation = ValidateClinicAccess(existing.ClinicId);
+        if (validation != null) return validation;
+
+        // Verify doctor and patient belong to the clinic
+        var doctor = await _context.Users.FindAsync(dto.DoctorId);
+        if (doctor == null || doctor.ClinicId != existing.ClinicId)
+            return BadRequest("El doctor no pertenece a esta clínica");
+
+        var patient = await _context.Patients.FindAsync(dto.PatientId);
+        if (patient == null || patient.ClinicId != existing.ClinicId)
+            return BadRequest("El paciente no pertenece a esta clínica");
+
         var appointment = new Appointment
         {
             Id = id,
@@ -128,6 +202,13 @@ public class AppointmentsController : ControllerBase
     [Authorize(Policy = "CanManageAppointments")]
     public async Task<ActionResult<Appointment>> Cancel(Guid id, [FromBody] CancelAppointmentDto dto)
     {
+        var validation = await ValidateResourceClinicAccessAsync(id, async (appointmentId) =>
+        {
+            var appt = await _context.Appointments.FindAsync(appointmentId);
+            return appt?.ClinicId;
+        });
+        if (validation != null) return validation;
+
         var result = await _appointmentService.CancelAppointmentAsync(id, dto.CancelledByUserId, dto.Reason, dto.IsPatientCancellation);
 
         if (!result.Success)
@@ -141,6 +222,13 @@ public class AppointmentsController : ControllerBase
     [Authorize(Policy = "CanManageAppointments")]
     public async Task<ActionResult<Appointment>> MarkNoShow(Guid id, [FromBody] MarkNoShowDto dto)
     {
+        var validation = await ValidateResourceClinicAccessAsync(id, async (appointmentId) =>
+        {
+            var appt = await _context.Appointments.FindAsync(appointmentId);
+            return appt?.ClinicId;
+        });
+        if (validation != null) return validation;
+
         var result = await _appointmentService.MarkNoShowAsync(id, dto.MarkedByUserId);
 
         if (!result.Success)
@@ -154,6 +242,12 @@ public class AppointmentsController : ControllerBase
     [Authorize(Policy = "CanUnblockPatients")]
     public async Task<ActionResult> UnblockPatient(Guid patientId, [FromBody] UnblockPatientDto dto)
     {
+        var patient = await _context.Patients.FindAsync(patientId);
+        if (patient == null) return NotFound();
+
+        var validation = ValidateClinicAccess(patient.ClinicId);
+        if (validation != null) return validation;
+
         var result = await _appointmentService.UnblockPatientAsync(patientId, dto.UnblockedByUserId);
 
         if (!result.Success)

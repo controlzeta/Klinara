@@ -1,0 +1,108 @@
+@using Microsoft.AspNetCore.Authorization
+@using Klinara.Web.Authorization
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<div class="k-brand-bar">
+    <a class="navbar-brand" href="" aria-label="Klinara, inicio">
+        <span class="k-brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M10 3h4v7h7v4h-7v7h-4v-7H3v-4h7z" /></svg>
+        </span>
+        <span class="k-brand-copy"><span>Klinara</span><small>ADMINISTRACIÓN GLOBAL</small></span>
+    </a>
+</div>
+
+<div class="k-clinic-switcher" aria-label="Contexto global">
+    <span class="k-clinic-avatar" aria-hidden="true">G</span>
+    <span class="k-clinic-copy"><strong>Plataforma</strong><small>Todas las clínicas</small></span>
+</div>
+
+<div class="nav-scrollable" onclick="window.klinaraUi?.closeMenu()">
+    <nav class="nav flex-column" aria-label="Administración Global">
+        <p class="k-nav-heading">Administración Global</p>
+
+        <AuthorizeView Policy="CanViewAllClinics">
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="admin/clinics" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-building me-2" aria-hidden="true"></span> Clínicas
+                    </NavLink>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+
+        <AuthorizeView Policy="CanManageUsers">
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="admin/users" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-people me-2" aria-hidden="true"></span> Usuarios
+                    </NavLink>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+
+        <AuthorizeView Policy="CanManageSchedules">
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="admin/schedules" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-calendar3 me-2" aria-hidden="true"></span> Horarios Doctores
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="admin/holidays" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-calendar-x me-2" aria-hidden="true"></span> Festivos
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="admin/vacations" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-person-badge me-2" aria-hidden="true"></span> Vacaciones
+                    </NavLink>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+
+        <AuthorizeView Policy="CanManagePayments">
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="admin/reports" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-graph-up me-2" aria-hidden="true"></span> Reportes & Export
+                    </NavLink>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+
+        <p class="k-nav-heading mt-4">Cuenta</p>
+        <AuthorizeView>
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="Account/Manage">
+                        <span class="bi bi-person-gear me-2" aria-hidden="true"></span> Mi cuenta
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <form action="Account/Logout" method="post">
+                        <AntiforgeryToken />
+                        <input type="hidden" name="ReturnUrl" value="~/" />
+                        <button type="submit" class="nav-link k-logout">
+                            <span class="bi bi-box-arrow-right me-2" aria-hidden="true"></span> Cerrar sesión
+                        </button>
+                    </form>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+    </nav>
+</div>
+
+<div class="k-sidebar-footer">
+    <span>Administración global de plataforma</span>
+    <AuthorizeView>
+        <Authorized>
+            <a class="k-privacy-link ms-2 text-muted small" href="/privacy" target="_blank">
+                <i class="bi bi-shield-check me-1 small"></i> Aviso de privacidad
+            </a>
+            <div class="k-user-card">
+                <span class="k-user-avatar" aria-hidden="true">@(context.User.Identity?.Name?[0].ToString().ToUpper() ?? "A")</span>
+                <span class="k-user-copy"><strong>@context.User.Identity?.Name</strong><small>Admin Plataforma</small></span>
+            </div>
+        </Authorized>
+    </AuthorizeView>
+</div>

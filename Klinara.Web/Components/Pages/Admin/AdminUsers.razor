@@ -1,0 +1,751 @@
+@page "/admin/users"
+@layout AdminLayout
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using System.ComponentModel.DataAnnotations
+@using Klinara.Web.Data
+@using Klinara.Web.Services
+@using Klinara.Web.Authorization
+@using Microsoft.AspNetCore.Identity
+@attribute [Authorize(Policy = "CanManageUsers")]
+@rendermode InteractiveServer
+@inject ApplicationDbContext DbContext
+@inject IUserAdministrationService UserAdminService
+@inject UserManager<ApplicationUser> UserManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<PageTitle>Usuarios - Administración Global</PageTitle>
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold text-primary mb-1">Gestión de Usuarios</h2>
+            <p class="text-muted mb-0">Administración global de usuarios de la plataforma</p>
+        </div>
+        <button class="btn btn-primary" @onclick="() => OpenModal(null)">
+            <i class="bi bi-person-plus me-1"></i> Nuevo Usuario
+        </button>
+    </div>
+
+    @if (!string.IsNullOrEmpty(_statusMessage))
+    {
+        <div class="alert alert-info alert-dismissible fade show" role="alert">
+            @_statusMessage
+            <button type="button" class="btn-close" @onclick="() => _statusMessage = null"></button>
+        </div>
+    }
+
+    <!-- Filtros -->
+        <div class="card p-3 mb-4 shadow-sm bg-light border-0">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold small text-muted">Buscar</label>
+                    <input type="text" class="form-control" @bind="_searchTerm" @bind:event="oninput" placeholder="Email, nombre..." />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold small text-muted">Rol</label>
+                    <select class="form-select" value="@_selectedRole" @onchange="OnSelectedRoleChanged">
+                        <option value="">Todos los roles</option>
+                        @foreach (var role in KlinaraRoles.All)
+                        {
+                            <option value="@role">@role</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold small text-muted">Clínica</label>
+                    <select class="form-select" value="@_selectedClinicId" @onchange="OnSelectedClinicIdChanged">
+                        <option value="">Todas las clínicas</option>
+                        @foreach (var c in _clinics)
+                        {
+                            <option value="@c.Id">@c.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-bold small text-muted">Estado</label>
+                    <select class="form-select" value="@_selectedActive" @onchange="OnSelectedActiveChanged">
+                        <option value="">Todos</option>
+                        <option value="true">Activos</option>
+                        <option value="false">Inactivos</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+    @if (_isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-2 text-muted">Cargando usuarios...</p>
+        </div>
+    }
+    else if (_filteredUsers == null || !_filteredUsers.Any())
+    {
+        <div class="card p-5 text-center shadow-sm">
+            <i class="bi bi-people display-4 text-muted mb-3"></i>
+            <h5>No hay usuarios</h5>
+            <p class="text-muted">Crea el primer usuario para comenzar.</p>
+        </div>
+    }
+    else
+    {
+        <div class="card border-0 shadow-sm">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Email</th>
+                            <th>Nombre</th>
+                            <th>Rol</th>
+                            <th>Clínica</th>
+                            <th>Estado</th>
+                            <th>Último Acceso</th>
+                            <th class="text-end">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var user in _filteredUsers)
+                        {
+                            var userRole = GetUserRole(user);
+                            <tr>
+                                <td>
+                                    <div class="fw-semibold">@user.Email</div>
+                                    <small class="text-muted">@user.UserName</small>
+                                </td>
+                                <td>@(user.FullName ?? "—")</td>
+                                <td>
+                                    <span class="badge @GetRoleBadgeClass(userRole)">@userRole</span>
+                                </td>
+                                <td>
+                                    @if (user.Clinic != null)
+                                    {
+                                        <span class="badge bg-light text-dark border">@user.Clinic.Name</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">Plataforma</span>
+                                    }
+                                </td>
+                                <td>
+                                    <span class="badge @(user.IsActive ? "bg-success" : "bg-danger")">
+                                        @(user.IsActive ? "Activo" : "Inactivo")
+                                    </span>
+                                    @if (user.LockoutEnd.HasValue && user.LockoutEnd > DateTimeOffset.UtcNow)
+                                    {
+                                        <span class="badge bg-warning text-dark ms-1">Bloqueado</span>
+                                    }
+                                </td>
+                                <td>@(user.LastLoginAt?.ToString("dd/MM/yyyy HH:mm") ?? "Nunca")</td>
+                                <td class="text-end">
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <button class="btn btn-outline-primary" @onclick="() => OpenModal(user)" title="Editar">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <button class="btn btn-outline-warning" @onclick="() => OpenChangeRoleModal(user)" title="Cambiar Rol">
+                                            <i class="bi bi-person-badge"></i>
+                                        </button>
+                                        @if (user.ClinicId.HasValue)
+                                        {
+                                            <button class="btn btn-outline-info" @onclick="() => OpenChangeClinicModal(user)" title="Cambiar Clínica">
+                                                <i class="bi bi-building"></i>
+                                            </button>
+                                        }
+                                        <button class="btn btn-outline-secondary" @onclick="() => OpenResetPasswordModal(user)" title="Resetear Contraseña">
+                                            <i class="bi bi-key"></i>
+                                        </button>
+                                        <button class="btn @(user.IsActive ? "btn-outline-danger" : "btn-outline-success")" @onclick="() => ToggleActive(user)" title="@(user.IsActive ? "Desactivar" : "Activar")">
+                                                                                    @if (user.IsActive)
+                                                                                    {
+                                                                                        <i class="bi bi-x-circle"></i>
+                                                                                    }
+                                                                                    else
+                                                                                    {
+                                                                                        <i class="bi bi-check-circle"></i>
+                                                                                    }
+                                                                                </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Modal Editar Usuario -->
+@if (_showModal)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">@(_editingUser == null ? "Nuevo Usuario" : "Editar Usuario")</h5>
+                    <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                </div>
+                <div class="modal-body">
+                    <EditForm Model="_formModel" OnValidSubmit="SaveUser">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary class="text-danger" />
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Email *</label>
+                                <InputText class="form-control" @bind-Value="_formModel.Email" placeholder="usuario@ejemplo.com" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">@(_editingUser == null ? "Contraseña *" : "Nueva Contraseña (opcional)")</label>
+                                <InputText type="password" class="form-control" @bind-Value="_formModel.Password" placeholder="@(_editingUser == null ? "Mínimo 8 caracteres" : "Dejar vacío para no cambiar")" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Nombre Completo</label>
+                                <InputText class="form-control" @bind-Value="_formModel.FullName" placeholder="Juan Pérez" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Rol *</label>
+                                <InputSelect class="form-select" @bind-Value="_formModel.Role">
+                                    @foreach (var role in KlinaraRoles.All)
+                                    {
+                                        <option value="@role">@role</option>
+                                    }
+                                </InputSelect>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Clínica</label>
+                                <InputSelect class="form-select" @bind-Value="_formModel.ClinicId">
+                                    <option value="">Sin clínica (Plataforma)</option>
+                                    @foreach (var c in _clinics)
+                                    {
+                                        <option value="@c.Id">@c.Name</option>
+                                    }
+                                </InputSelect>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Estado</label>
+                                <div class="form-check form-switch mt-2">
+                                    <InputCheckbox class="form-check-input" @bind-Value="_formModel.IsActive" />
+                                    <label class="form-check-label fw-semibold">Activo</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer mt-4">
+                            <button type="button" class="btn btn-secondary" @onclick="CloseModal">Cancelar</button>
+                            <button type="submit" class="btn btn-primary">@(_editingUser == null ? "Crear Usuario" : "Guardar Cambios")</button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Modal Cambiar Rol -->
+@if (_showChangeRoleModal)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);" tabindex="-1" role="dialog">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">Cambiar Rol: @_changeRoleUser?.Email</h5>
+                    <button type="button" class="btn-close" @onclick="CloseChangeRoleModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                                            <label class="form-label fw-semibold">Nuevo Rol</label>
+                                            <select class="form-select" value="@_changeRoleModel.NewRole" @onchange="OnChangeRoleModelRoleChanged">
+                                                @foreach (var role in KlinaraRoles.All)
+                                                {
+                                                    <option value="@role">@role</option>
+                                                }
+                                            </select>
+                                        </div>
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <strong>AdminPlataforma:</strong> acceso global. <strong>AdminClinica:</strong> solo su clínica. <strong>Doctor/Empleado:</strong> solo su clínica.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseChangeRoleModal">Cancelar</button>
+                    <button type="button" class="btn btn-warning" @onclick="SaveChangeRole">Cambiar Rol</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Modal Cambiar Clínica -->
+@if (_showChangeClinicModal)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);" tabindex="-1" role="dialog">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">Cambiar Clínica: @_changeClinicUser?.Email</h5>
+                    <button type="button" class="btn-close" @onclick="CloseChangeClinicModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                                            <label class="form-label fw-semibold">Nueva Clínica</label>
+                                            <select class="form-select" value="@_changeClinicModel.NewClinicId" @onchange="OnChangeClinicModelClinicChanged">
+                                                <option value="">Sin clínica (Plataforma)</option>
+                                                @foreach (var c in _clinics)
+                                                {
+                                                    <option value="@c.Id">@c.Name</option>
+                                                }
+                                            </select>
+                                        </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseChangeClinicModal">Cancelar</button>
+                    <button type="button" class="btn btn-info" @onclick="SaveChangeClinic">Cambiar Clínica</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Modal Resetear Contraseña -->
+@if (_showResetPasswordModal)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);" tabindex="-1" role="dialog">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">Resetear Contraseña: @_resetPasswordUser?.Email</h5>
+                    <button type="button" class="btn-close" @onclick="CloseResetPasswordModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        Se generará una contraseña temporal y se enviará por email al usuario.
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Nueva Contraseña Temporal (opcional)</label>
+                        <input type="text" class="form-control" @bind="_resetPasswordModel.NewPassword" placeholder="Dejar vacío para auto-generar" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseResetPasswordModal">Cancelar</button>
+                    <button type="button" class="btn btn-secondary" @onclick="SaveResetPassword">Resetear Contraseña</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<ApplicationUser>? _users;
+    private List<ApplicationUser>? _filteredUsers;
+    private List<Clinic> _clinics = new();
+    private Dictionary<Guid, string> _userRoles = new();
+    private bool _isLoading = true;
+    private string? _statusMessage;
+    private string _searchTerm = string.Empty;
+    private string _selectedRole = string.Empty;
+    private Guid? _selectedClinicId;
+    private bool? _selectedActive;
+
+    // Modal principal
+    private bool _showModal = false;
+    private ApplicationUser? _editingUser;
+    private UserFormModel _formModel = new();
+    private List<Clinic> _availableClinics = new();
+
+    // Modal Cambiar Rol
+    private bool _showChangeRoleModal = false;
+    private ApplicationUser? _changeRoleUser;
+    private ChangeRoleModel _changeRoleModel = new();
+
+    // Modal Cambiar Clínica
+    private bool _showChangeClinicModal = false;
+    private ApplicationUser? _changeClinicUser;
+    private ChangeClinicModel _changeClinicModel = new();
+
+    // Modal Reset Password
+    private bool _showResetPasswordModal = false;
+    private ApplicationUser? _resetPasswordUser;
+    private ResetPasswordModel _resetPasswordModel = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _clinics = await DbContext.Clinics.Where(c => c.IsActive).OrderBy(c => c.Name).ToListAsync();
+        _availableClinics = _clinics;
+        await LoadUsersAsync();
+    }
+
+    private async Task LoadUsersAsync()
+    {
+        _isLoading = true;
+        _users = await DbContext.Users
+            .Include(u => u.Clinic)
+            .OrderByDescending(u => u.CreatedAt)
+            .ToListAsync();
+
+        // Obtener roles de cada usuario
+        _userRoles.Clear();
+        foreach (var user in _users)
+        {
+            var roles = await UserManager.GetRolesAsync(user);
+            _userRoles[user.Id] = roles.FirstOrDefault() ?? "Sin rol";
+        }
+
+        FilterUsers();
+        _isLoading = false;
+    }
+
+    private void FilterUsers()
+    {
+        if (_users == null) return;
+
+        var query = _users.AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(_searchTerm))
+        {
+            var term = _searchTerm.ToLower();
+            query = query.Where(u => u.Email.ToLower().Contains(term) || u.UserName.ToLower().Contains(term) || (u.FullName ?? "").ToLower().Contains(term));
+        }
+
+        if (!string.IsNullOrEmpty(_selectedRole))
+                    query = query.Where(u => _userRoles.ContainsKey(u.Id) && _userRoles[u.Id] == _selectedRole);
+
+        if (_selectedClinicId.HasValue)
+            query = query.Where(u => u.ClinicId == _selectedClinicId);
+
+        if (_selectedActive.HasValue)
+            query = query.Where(u => u.IsActive == _selectedActive.Value);
+
+        _filteredUsers = query.ToList();
+    }
+
+    private string GetUserRole(ApplicationUser user)
+    {
+        return _userRoles.TryGetValue(user.Id, out var role) ? role : "Sin rol";
+    }
+
+    // Modal Principal
+    private void OpenModal(ApplicationUser? user)
+    {
+        _editingUser = user;
+        if (user == null)
+        {
+            _formModel = new UserFormModel
+            {
+                Role = KlinaraRoles.Employee,
+                IsActive = true
+            };
+        }
+        else
+        {
+            _formModel = new UserFormModel
+            {
+                Id = user.Id,
+                Email = user.Email,
+                FullName = user.FullName,
+                Role = GetUserRole(user),
+                ClinicId = user.ClinicId,
+                IsActive = user.IsActive
+            };
+        }
+        _showModal = true;
+    }
+
+    private void CloseModal()
+    {
+        _showModal = false;
+        _editingUser = null;
+        _formModel = new UserFormModel { Role = KlinaraRoles.Employee, IsActive = true };
+    }
+
+    private async Task SaveUser()
+    {
+        try
+        {
+            if (_editingUser == null)
+            {
+                // Create
+                var exists = await DbContext.Users.AnyAsync(u => u.Email == _formModel.Email);
+                if (exists)
+                {
+                    _statusMessage = "El email ya está registrado.";
+                    return;
+                }
+
+                if (string.IsNullOrWhiteSpace(_formModel.Password) || _formModel.Password.Length < 8)
+                {
+                    _statusMessage = "La contraseña debe tener al menos 8 caracteres.";
+                    return;
+                }
+
+                var dto = new CreateUserDto(
+                    _formModel.Email,
+                    _formModel.FullName ?? string.Empty,
+                    _formModel.Role,
+                    _formModel.ClinicId,
+                    null // Phone
+                );
+
+                var currentUserId = Guid.Parse((await AuthenticationStateProvider.GetAuthenticationStateAsync()).User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? Guid.Empty.ToString());
+                var result = await UserAdminService.CreateAsync(dto, currentUserId);
+
+                if (!result.Success)
+                {
+                    _statusMessage = $"Error: {string.Join(", ", result.Errors)}";
+                    return;
+                }
+
+                _statusMessage = $"Usuario '{result.User!.Email}' creado exitosamente.";
+            }
+            else
+            {
+                // Update
+                var dto = new UpdateUserDto(
+                    _formModel.FullName,
+                    null, // Phone
+                    _formModel.IsActive,
+                    _formModel.Role,
+                    _formModel.ClinicId
+                );
+
+                var currentUserId = Guid.Parse((await AuthenticationStateProvider.GetAuthenticationStateAsync()).User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? Guid.Empty.ToString());
+                var result = await UserAdminService.UpdateAsync(_editingUser.Id, dto, currentUserId);
+
+                if (!result.Success)
+                {
+                    _statusMessage = $"Error: {string.Join(", ", result.Errors)}";
+                    return;
+                }
+
+                _statusMessage = $"Usuario '{result.User!.Email}' actualizado exitosamente.";
+            }
+
+            CloseModal();
+            await LoadUsersAsync();
+        }
+        catch (Exception ex)
+        {
+            _statusMessage = $"Error: {ex.Message}";
+        }
+    }
+
+    // Cambiar Rol
+    private void OpenChangeRoleModal(ApplicationUser user)
+    {
+        _changeRoleUser = user;
+        _changeRoleModel = new ChangeRoleModel { NewRole = GetUserRole(user) };
+        _showChangeRoleModal = true;
+    }
+
+    private void CloseChangeRoleModal()
+    {
+        _showChangeRoleModal = false;
+        _changeRoleUser = null;
+    }
+
+    private async Task SaveChangeRole()
+    {
+        if (_changeRoleUser == null) return;
+
+        try
+        {
+            var currentUserId = Guid.Parse((await AuthenticationStateProvider.GetAuthenticationStateAsync()).User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? Guid.Empty.ToString());
+            var result = await UserAdminService.ChangeRoleAsync(_changeRoleUser.Id, _changeRoleModel.NewRole, currentUserId);
+
+            if (!result.Success)
+            {
+                _statusMessage = $"Error: {string.Join(", ", result.Errors)}";
+                return;
+            }
+
+            _statusMessage = $"Rol de '{_changeRoleUser.Email}' cambiado a '{_changeRoleModel.NewRole}'.";
+            CloseChangeRoleModal();
+            await LoadUsersAsync();
+        }
+        catch (Exception ex)
+        {
+            _statusMessage = $"Error: {ex.Message}";
+        }
+    }
+
+    // Cambiar Clínica
+    private void OpenChangeClinicModal(ApplicationUser user)
+    {
+        _changeClinicUser = user;
+        _changeClinicModel = new ChangeClinicModel { NewClinicId = user.ClinicId };
+        _showChangeClinicModal = true;
+    }
+
+    private void CloseChangeClinicModal()
+    {
+        _showChangeClinicModal = false;
+        _changeClinicUser = null;
+    }
+
+    private async Task SaveChangeClinic()
+    {
+        if (_changeClinicUser == null) return;
+
+        try
+        {
+            var currentUserId = Guid.Parse((await AuthenticationStateProvider.GetAuthenticationStateAsync()).User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? Guid.Empty.ToString());
+            var result = await UserAdminService.ChangeClinicAsync(_changeClinicUser.Id, _changeClinicModel.NewClinicId, currentUserId);
+
+            if (!result.Success)
+            {
+                _statusMessage = $"Error: {string.Join(", ", result.Errors)}";
+                return;
+            }
+
+            _statusMessage = $"Clínica de '{_changeClinicUser.Email}' actualizada.";
+            CloseChangeClinicModal();
+            await LoadUsersAsync();
+        }
+        catch (Exception ex)
+        {
+            _statusMessage = $"Error: {ex.Message}";
+        }
+    }
+
+    // Reset Password
+    private void OpenResetPasswordModal(ApplicationUser user)
+    {
+        _resetPasswordUser = user;
+        _resetPasswordModel = new ResetPasswordModel();
+        _showResetPasswordModal = true;
+    }
+
+    private void CloseResetPasswordModal()
+    {
+        _showResetPasswordModal = false;
+        _resetPasswordUser = null;
+    }
+
+    private async Task SaveResetPassword()
+    {
+        if (_resetPasswordUser == null) return;
+
+        try
+        {
+            var currentUserId = Guid.Parse((await AuthenticationStateProvider.GetAuthenticationStateAsync()).User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? Guid.Empty.ToString());
+            var result = await UserAdminService.ResetPasswordAsync(_resetPasswordUser.Id, currentUserId);
+
+            if (!result.Success)
+            {
+                _statusMessage = $"Error: {string.Join(", ", result.Errors)}";
+                return;
+            }
+
+            _statusMessage = $"Contraseña reseteada para '{_resetPasswordUser.Email}'. Se envió email con contraseña temporal.";
+            CloseResetPasswordModal();
+        }
+        catch (Exception ex)
+        {
+            _statusMessage = $"Error: {ex.Message}";
+        }
+    }
+
+    private async Task ToggleActive(ApplicationUser user)
+        {
+            try
+            {
+                var currentUserId = Guid.Parse((await AuthenticationStateProvider.GetAuthenticationStateAsync()).User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? Guid.Empty.ToString());
+                var dto = new UpdateUserDto
+                (
+                    null, // FullName
+                    null, // Phone
+                    !user.IsActive, // IsActive
+                    null, // Role
+                    null  // ClinicId
+                );
+                var result = await UserAdminService.UpdateAsync(user.Id, dto, currentUserId);
+
+                if (!result.Success)
+                {
+                    _statusMessage = $"Error: {string.Join(", ", result.Errors)}";
+                    return;
+                }
+
+                _statusMessage = $"Usuario '{user.Email}' {(user.IsActive ? "desactivado" : "activado")}.";
+                await LoadUsersAsync();
+            }
+            catch (Exception ex)
+            {
+                _statusMessage = $"Error: {ex.Message}";
+            }
+        }
+
+        private void OnChangeRoleModelRoleChanged(ChangeEventArgs e)
+        {
+            _changeRoleModel.NewRole = e.Value?.ToString() ?? "";
+        }
+
+        private void OnChangeClinicModelClinicChanged(ChangeEventArgs e)
+            {
+                _changeClinicModel.NewClinicId = Guid.TryParse(e.Value?.ToString(), out var g) ? g : (Guid?)null;
+            }
+
+            private void OnSelectedRoleChanged(ChangeEventArgs e)
+            {
+                _selectedRole = e.Value?.ToString() ?? "";
+                FilterUsers();
+            }
+
+            private void OnSelectedClinicIdChanged(ChangeEventArgs e)
+            {
+                _selectedClinicId = Guid.TryParse(e.Value?.ToString(), out var g) ? g : (Guid?)null;
+                FilterUsers();
+            }
+
+            private void OnSelectedActiveChanged(ChangeEventArgs e)
+            {
+                _selectedActive = bool.TryParse(e.Value?.ToString(), out var b) ? b : (bool?)null;
+                FilterUsers();
+            }
+
+            private static string GetRoleBadgeClass(string role) => role switch
+    {
+        "AdminPlataforma" => "bg-danger",
+        "AdminClinica" => "bg-warning text-dark",
+        "Doctor" => "bg-primary",
+        "Empleado" => "bg-secondary",
+        _ => "bg-dark"
+    };
+
+    // Form Models
+    private class UserFormModel
+    {
+        public Guid Id { get; set; }
+        [Required(ErrorMessage = "El email es obligatorio")]
+        [EmailAddress(ErrorMessage = "Email inválido")]
+        [MaxLength(256)]
+        public string Email { get; set; } = string.Empty;
+
+        [MinLength(8, ErrorMessage = "Mínimo 8 caracteres")]
+        public string Password { get; set; } = string.Empty;
+
+        [MaxLength(200)]
+        public string? FullName { get; set; }
+
+        [Required(ErrorMessage = "El rol es obligatorio")]
+        public string Role { get; set; } = KlinaraRoles.Employee;
+
+        public Guid? ClinicId { get; set; }
+
+        public bool IsActive { get; set; } = true;
+    }
+
+    private class ChangeRoleModel
+    {
+        public string NewRole { get; set; } = KlinaraRoles.Employee;
+    }
+
+    private class ChangeClinicModel
+    {
+        public Guid? NewClinicId { get; set; }
+    }
+
+    private class ResetPasswordModel
+    {
+        public string? NewPassword { get; set; }
+    }
+}

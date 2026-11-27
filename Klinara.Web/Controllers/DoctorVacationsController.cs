@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
+using Klinara.Web.Authorization;
 using Klinara.Web.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -21,6 +23,22 @@ public class DoctorVacationsController : ControllerBase
         _context = context;
     }
 
+    private Guid? GetCurrentUserClinicId()
+    {
+        var claim = User.FindFirst("ClinicId")?.Value;
+        return Guid.TryParse(claim, out var id) ? id : null;
+    }
+
+    private bool IsPlatformAdmin() => User.IsInRole(KlinaraRoles.PlatformAdmin);
+
+    private ActionResult ValidateClinicAccess(Guid clinicId)
+    {
+        var userClinicId = GetCurrentUserClinicId();
+        if (userClinicId.HasValue && clinicId != userClinicId.Value && !IsPlatformAdmin())
+            return Forbid();
+        return null;
+    }
+
     // GET: api/doctorvacations/clinic/{clinicId}/doctor/{doctorId}
     [HttpGet("clinic/{clinicId:guid}/doctor/{doctorId:guid}")]
     [Authorize(Policy = "CanManageVacations")]
@@ -30,6 +48,9 @@ public class DoctorVacationsController : ControllerBase
         [FromQuery] DateTime? startDate = null,
         [FromQuery] DateTime? endDate = null)
     {
+        var validation = ValidateClinicAccess(clinicId);
+        if (validation != null) return validation;
+
         var query = _context.DoctorVacations
             .Where(v => v.ClinicId == clinicId && v.DoctorId == doctorId);
 
@@ -45,6 +66,14 @@ public class DoctorVacationsController : ControllerBase
     [Authorize(Policy = "CanManageVacations")]
     public async Task<ActionResult<DoctorVacation>> Create([FromBody] CreateDoctorVacationDto dto)
     {
+        var validation = ValidateClinicAccess(dto.ClinicId);
+        if (validation != null) return validation;
+
+        // Verify doctor belongs to the clinic
+        var doctor = await _context.Users.FindAsync(dto.DoctorId);
+        if (doctor == null || doctor.ClinicId != dto.ClinicId)
+            return BadRequest("El doctor no pertenece a esta clínica");
+
         var vacation = new DoctorVacation
         {
             Id = Guid.NewGuid(),
@@ -69,6 +98,9 @@ public class DoctorVacationsController : ControllerBase
     {
         var vacation = await _context.DoctorVacations.FindAsync(id);
         if (vacation == null) return NotFound();
+
+        var validation = ValidateClinicAccess(vacation.ClinicId);
+        if (validation != null) return validation;
 
         _context.DoctorVacations.Remove(vacation);
         await _context.SaveChangesAsync();

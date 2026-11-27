@@ -1,0 +1,20 @@
+@inherits LayoutComponentBase
+
+<div class="page klinara-shell">
+    <AdminNavMenu />
+
+    <main class="klinara-main flex-grow-1">
+        <header class="k-portal-topbar">
+            <button type="button" class="k-icon-button k-mobile-menu" aria-label="Abrir menú" onclick="window.klinaraUi?.toggleMenu()">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
+            </button>
+            <div class="k-portal-label">Administración Global</div>
+            <button type="button" class="k-icon-button" aria-label="Cambiar tema claro u oscuro" title="Cambiar tema" onclick="window.klinaraUi?.toggleTheme()">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32 1.41-1.41" /></svg>
+            </button>
+        </header>
+        <div class="k-portal-content">
+            @Body
+        </div>
+    </main>
+</div>

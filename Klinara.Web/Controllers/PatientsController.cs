@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
+using Klinara.Web.Authorization;
 using Klinara.Web.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -21,11 +23,30 @@ public class PatientsController : ControllerBase
         _context = context;
     }
 
+    private Guid? GetCurrentUserClinicId()
+    {
+        var claim = User.FindFirst("ClinicId")?.Value;
+        return Guid.TryParse(claim, out var id) ? id : null;
+    }
+
+    private bool IsPlatformAdmin() => User.IsInRole(KlinaraRoles.PlatformAdmin);
+
+    private ActionResult ValidateClinicAccess(Guid clinicId)
+    {
+        var userClinicId = GetCurrentUserClinicId();
+        if (userClinicId.HasValue && clinicId != userClinicId.Value && !IsPlatformAdmin())
+            return Forbid();
+        return null;
+    }
+
     // GET: api/patients/clinic/{clinicId}
     [HttpGet("clinic/{clinicId:guid}")]
     [Authorize(Policy = "CanManagePatients")]
     public async Task<ActionResult<List<Patient>>> GetByClinic(Guid clinicId)
     {
+        var validation = ValidateClinicAccess(clinicId);
+        if (validation != null) return validation;
+
         var patients = await _context.Patients
             .Where(p => p.ClinicId == clinicId)
             .OrderBy(p => p.FullName)
@@ -43,6 +64,10 @@ public class PatientsController : ControllerBase
             .Include(p => p.Tokens)
             .FirstOrDefaultAsync(p => p.Id == id);
         if (patient == null) return NotFound();
+
+        var validation = ValidateClinicAccess(patient.ClinicId);
+        if (validation != null) return validation;
+
         return Ok(patient);
     }
 
@@ -51,6 +76,9 @@ public class PatientsController : ControllerBase
     [Authorize(Policy = "CanManagePatients")]
     public async Task<ActionResult<Patient>> Create([FromBody] CreatePatientDto dto)
     {
+        var validation = ValidateClinicAccess(dto.ClinicId);
+        if (validation != null) return validation;
+
         var patient = new Patient
         {
             Id = Guid.NewGuid(),
@@ -79,6 +107,9 @@ public class PatientsController : ControllerBase
     {
         var patient = await _context.Patients.FindAsync(id);
         if (patient == null) return NotFound();
+
+        var validation = ValidateClinicAccess(patient.ClinicId);
+        if (validation != null) return validation;
 
         patient.FullName = dto.FullName;
         patient.Email = dto.Email;
