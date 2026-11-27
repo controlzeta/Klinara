@@ -1,0 +1,303 @@
+@page "/admin/reports"
+@layout AdminLayout
+@attribute [Authorize(Policy = "CanManagePayments")]
+
+@using Klinara.Web.Data
+@using Klinara.Web.Services
+@using Microsoft.AspNetCore.Authorization
+
+@inject IAdminExportService ExportService
+@inject NavigationManager NavigationManager
+@inject HttpClient HttpClient
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Reportes</PageTitle>
+
+<h3>Reportes</h3>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Exportar Reportes</h5>
+                <span class="badge bg-primary">Solo PlatformAdmin</span>
+            </div>
+            <div class="card-body">
+                <div class="row g-3 mb-4">
+                    <div class="col-md-3">
+                                            <label class="form-label">Clínica</label>
+                                            <select class="form-select" @bind="selectedClinicId" @bind:event="onchange">
+                                                <option value="">Todas (solo PlatformAdmin)</option>
+                                                @foreach (var clinic in clinics)
+                                                {
+                                                    <option value="@clinic.Id">@clinic.Name</option>
+                                                }
+                                            </select>
+                                        </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Fecha inicio</label>
+                        <input type="date" class="form-control" @bind="startDate" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Fecha fin</label>
+                        <input type="date" class="form-control" @bind="endDate" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Paciente (opcional)</label>
+                        <select class="form-select" @bind="selectedPatientId">
+                            <option value="">Todos</option>
+                            @foreach (var patient in patients)
+                            {
+                                <option value="@patient.Id">@patient.FullName</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="card h-100">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0">Reporte de Pagos</h6>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted small">Lista detallada de pagos con filtros por fecha, clínica y paciente.</p>
+                                <div class="d-flex gap-2 flex-wrap" style="display: @(!exportingPagos ? "flex" : "none")">
+                                    <button class="btn btn-outline-primary btn-sm" @onclick="ExportPagosExcel" disabled="@exportingPagos">
+                                        <i class="bi bi-file-earmark-spreadsheet me-1"></i> Excel (.xlsx)
+                                    </button>
+                                    <button class="btn btn-outline-success btn-sm" @onclick="ExportPagosCsv" disabled="@exportingPagos">
+                                        <i class="bi bi-file-earmark-text me-1"></i> CSV
+                                    </button>
+                                    <button class="btn btn-outline-danger btn-sm" @onclick="ExportPagosPdf" disabled="@exportingPagos">
+                                        <i class="bi bi-file-earmark-pdf me-1"></i> PDF
+                                    </button>
+                                </div>
+                                @if (exportingPagos)
+                                {
+                                    <div class="d-flex align-items-center text-muted small">
+                                        <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                                        Generando reporte...
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card h-100">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0">Reporte de Saldos de Pacientes</h6>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted small">Resumen de saldos pendientes por paciente (Total Adeudado - Total Pagado).</p>
+                                <div class="d-flex gap-2 flex-wrap" style="display: @(!exportingSaldos ? "flex" : "none")">
+                                    <button class="btn btn-outline-primary btn-sm" @onclick="ExportSaldosExcel" disabled="@exportingSaldos">
+                                        <i class="bi bi-file-earmark-spreadsheet me-1"></i> Excel (.xlsx)
+                                    </button>
+                                    <button class="btn btn-outline-success btn-sm" @onclick="ExportSaldosCsv" disabled="@exportingSaldos">
+                                        <i class="bi bi-file-earmark-text me-1"></i> CSV
+                                    </button>
+                                    <button class="btn btn-outline-danger btn-sm" @onclick="ExportSaldosPdf" disabled="@exportingSaldos">
+                                        <i class="bi bi-file-earmark-pdf me-1"></i> PDF
+                                    </button>
+                                </div>
+                                @if (exportingSaldos)
+                                {
+                                    <div class="d-flex align-items-center text-muted small">
+                                        <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                                        Generando reporte...
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                @if (errorMessage != null)
+                {
+                    <div class="alert alert-danger mt-3" role="alert">
+                        @errorMessage
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<Clinic> clinics = new();
+    private List<Patient> patients = new();
+    private Guid? selectedClinicId;
+        private DateTime? startDate;
+        private DateTime? endDate;
+        private Guid? selectedPatientId;
+        private bool exportingPagos = false;
+        private bool exportingSaldos = false;
+        private string? errorMessage;
+        private Guid? _previousClinicId;
+
+        protected override async Task OnInitializedAsync()
+        {
+            await LoadClinicsAsync();
+        }
+
+        protected override async Task OnParametersSetAsync()
+        {
+            if (_previousClinicId != selectedClinicId)
+            {
+                _previousClinicId = selectedClinicId;
+                if (selectedClinicId.HasValue)
+                {
+                    await LoadPatientsAsync();
+                }
+                else
+                {
+                    patients = new();
+                }
+            }
+        }
+
+    private async Task LoadClinicsAsync()
+    {
+        try
+        {
+            clinics = await HttpClient.GetFromJsonAsync<List<Clinic>>("api/clinics") ?? new();
+            
+            // Si hay una clínica seleccionada, cargar pacientes
+            if (selectedClinicId.HasValue)
+            {
+                await LoadPatientsAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error cargando clínicas: {ex.Message}";
+        }
+    }
+
+    private async Task LoadPatientsAsync()
+        {
+            if (!selectedClinicId.HasValue) return;
+        
+            try
+            {
+                patients = await HttpClient.GetFromJsonAsync<List<Patient>>($"api/patients/clinic/{selectedClinicId.Value}") ?? new();
+            }
+            catch (Exception ex)
+            {
+                errorMessage = $"Error cargando pacientes: {ex.Message}";
+            }
+        }
+
+        private async Task ExportPagosExcel() => await ExportPagos("excel");
+    private async Task ExportPagosCsv() => await ExportPagos("csv");
+    private async Task ExportPagosPdf() => await ExportPagos("pdf");
+    private async Task ExportSaldosExcel() => await ExportSaldos("excel");
+    private async Task ExportSaldosCsv() => await ExportSaldos("csv");
+    private async Task ExportSaldosPdf() => await ExportSaldos("pdf");
+
+    private async Task ExportPagos(string format)
+    {
+        if (!selectedClinicId.HasValue)
+        {
+            errorMessage = "Debe seleccionar una clínica";
+            return;
+        }
+
+        exportingPagos = true;
+        errorMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            var url = $"api/payments/clinics/{selectedClinicId.Value}/export?format={format}";
+            if (startDate.HasValue) url += $"&startDate={startDate.Value:yyyy-MM-dd}";
+            if (endDate.HasValue) url += $"&endDate={endDate.Value:yyyy-MM-dd}";
+            if (selectedPatientId.HasValue) url += $"&patientId={selectedPatientId.Value}";
+
+            var response = await HttpClient.GetAsync(url);
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsByteArrayAsync();
+                var contentType = response.Content.Headers.ContentType?.ToString() ?? "";
+                var fileName = $"pagos_{selectedClinicId.Value}_{DateTime.Now:yyyyMMdd}.{GetExtension(format)}";
+                await DownloadFile(fileName, contentType, content);
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                errorMessage = $"Error exportando: {error}";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            exportingPagos = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ExportSaldos(string format)
+    {
+        if (!selectedClinicId.HasValue)
+        {
+            errorMessage = "Debe seleccionar una clínica";
+            return;
+        }
+
+        exportingSaldos = true;
+        errorMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            var url = $"api/payments/clinics/{selectedClinicId.Value}/balance/export?format={format}";
+            var response = await HttpClient.GetAsync(url);
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsByteArrayAsync();
+                var contentType = response.Content.Headers.ContentType?.ToString() ?? "";
+                var fileName = $"saldos_pacientes_{selectedClinicId.Value}_{DateTime.Now:yyyyMMdd}.{GetExtension(format)}";
+                await DownloadFile(fileName, contentType, content);
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                errorMessage = $"Error exportando saldos: {error}";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            exportingSaldos = false;
+            StateHasChanged();
+        }
+    }
+
+    private string GetExtension(string format) => format.ToLower() switch
+    {
+        "csv" => "csv",
+        "pdf" => "pdf",
+        _ => "xlsx"
+    };
+
+    private async Task DownloadFile(string fileName, string contentType, byte[] content)
+    {
+        var base64 = Convert.ToBase64String(content);
+        var script = $@"
+            var link = document.createElement('a');
+            link.href = 'data:{contentType};base64,{base64}';
+            link.download = '{fileName}';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        ";
+        await JSRuntime.InvokeVoidAsync("eval", script);
+    }
+}

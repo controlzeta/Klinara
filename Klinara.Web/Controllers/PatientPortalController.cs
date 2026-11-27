@@ -83,6 +83,27 @@ public class PatientPortalController : ControllerBase
     }
 
     /// <summary>
+    /// Reenvía código OTP de 6 dígitos al email del paciente (rate-limited)
+    /// </summary>
+    [HttpPost("clinics/{subdomain}/resend-otp")]
+    public async Task<ActionResult<PortalVerificationResult>> ResendOtp(string subdomain, [FromBody] VerifyEmailDto dto)
+    {
+        if (string.IsNullOrWhiteSpace(dto.Email) || string.IsNullOrWhiteSpace(dto.ClinicSubdomain))
+            return BadRequest(new { Error = "Email y subdominio son requeridos" });
+
+        // Validar que el subdominio coincida
+        if (!dto.ClinicSubdomain.Equals(subdomain, StringComparison.OrdinalIgnoreCase))
+            return BadRequest(new { Error = "Subdominio no coincide" });
+
+        var result = await _portalService.ResendVerificationEmailAsync(dto.Email.Trim(), subdomain.Trim());
+
+        if (!result.Success)
+            return BadRequest(new { Error = result.Error });
+
+        return Ok(result);
+    }
+
+    /// <summary>
     /// Valida el OTP y genera un token PortalAccess (30 min, single-use)
     /// </summary>
     [HttpPost("validate-otp")]

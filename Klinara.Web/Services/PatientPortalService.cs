@@ -114,16 +114,87 @@ public class PatientPortalService : IPatientPortalService
 
             _logger.LogInformation("OTP de verificación enviado a {Email} para clínica {ClinicId}", email, clinic.Id);
 
-            return new PortalVerificationResult(true, null, email);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error enviando email de verificación a {Email} para subdominio {Subdomain}", email, clinicSubdomain);
-            return new PortalVerificationResult(false, ErrorCodes.OtpSendError, email);
-        }
-    }
+                        return new PortalVerificationResult(true, null, email);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error enviando email de verificación a {Email} para subdominio {Subdomain}", email, clinicSubdomain);
+                        return new PortalVerificationResult(false, ErrorCodes.OtpSendError, email);
+                    }
+                }
 
-    public async Task<PortalTokenResult> ValidateOtpAndCreatePortalTokenAsync(string email, string code, string clinicSubdomain)
+                public async Task<PortalVerificationResult> ResendVerificationEmailAsync(string email, string clinicSubdomain)
+                {
+                    try
+                    {
+                        // Buscar clínica por subdominio
+                        var clinic = await _context.Clinics
+                            .FirstOrDefaultAsync(c => c.Subdomain == clinicSubdomain && c.IsActive);
+
+                        if (clinic == null)
+                        {
+                            _logger.LogWarning("Clínica no encontrada para subdominio: {Subdomain}", clinicSubdomain);
+                            return new PortalVerificationResult(false, ErrorCodes.ClinicNotFound, email);
+                        }
+
+                        // Buscar usuario portal existente
+                        var portalUser = await _context.Users
+                            .FirstOrDefaultAsync(u => u.Email == email && u.ClinicId == clinic.Id);
+
+                        if (portalUser == null)
+                        {
+                            _logger.LogWarning("Usuario portal no encontrado para reenvío OTP: {Email} en clínica {ClinicId}", email, clinic.Id);
+                            return new PortalVerificationResult(false, ErrorCodes.UserNotFound, email);
+                        }
+
+                        // Verificar rate limiting: máximo 3 reenvíos por hora
+                        var recentResends = await _context.OtpResendLogs
+                            .Where(l => l.Email == email && l.ClinicId == clinic.Id && l.RequestedAt > DateTime.UtcNow.AddHours(-1))
+                            .CountAsync();
+
+                        if (recentResends >= 3)
+                        {
+                            _logger.LogWarning("Rate limit excedido para reenvío OTP: {Email} en clínica {ClinicId}", email, clinic.Id);
+                            return new PortalVerificationResult(false, "Demasiados reenvíos. Intente nuevamente en una hora.", email);
+                        }
+
+                        // Verificar si el usuario está en lockout por intentos fallidos
+                        if (await _otpService.IsOtpLockedOutAsync(portalUser))
+                        {
+                            _logger.LogWarning("Usuario en lockout OTP, reenvío denegado: {Email}", email);
+                            return new PortalVerificationResult(false, "Cuenta temporalmente bloqueada por intentos fallidos. Intente en 15 minutos.", email);
+                        }
+
+                        // Registrar intento de reenvío
+                        _context.OtpResendLogs.Add(new OtpResendLog
+                        {
+                            Id = Guid.NewGuid(),
+                            Email = email,
+                            ClinicId = clinic.Id,
+                            RequestedAt = DateTime.UtcNow
+                        });
+
+                        // Generar y enviar nuevo OTP con el mismo propósito (scoped a clínica)
+                        var otpPurpose = OtpPurposes.EmailVerificationForClinic(clinic.Id);
+                        var otpCode = await _otpService.GenerateOtpAsync(portalUser, otpPurpose);
+
+                        // Enviar email real
+                        await SendOtpEmailAsync(email, otpCode, clinic.Name);
+
+                        await _context.SaveChangesAsync();
+
+                        _logger.LogInformation("OTP de verificación reenviado a {Email} para clínica {ClinicId}", email, clinic.Id);
+
+                        return new PortalVerificationResult(true, null, email);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error reenviando email de verificación a {Email} para subdominio {Subdomain}", email, clinicSubdomain);
+                        return new PortalVerificationResult(false, ErrorCodes.OtpSendError, email);
+                    }
+                }
+
+                public async Task<PortalTokenResult> ValidateOtpAndCreatePortalTokenAsync(string email, string code, string clinicSubdomain)
     {
         try
         {

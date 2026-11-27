@@ -11,10 +11,12 @@ namespace Klinara.Web.Controllers;
 public class PaymentsController : ControllerBase
 {
     private readonly IPaymentService _paymentService;
+    private readonly IAdminExportService _exportService;
 
-    public PaymentsController(IPaymentService paymentService)
+    public PaymentsController(IPaymentService paymentService, IAdminExportService exportService)
     {
         _paymentService = paymentService;
+        _exportService = exportService;
     }
 
     [HttpPost]
@@ -86,6 +88,101 @@ public class PaymentsController : ControllerBase
             return BadRequest(new { Error = result.Error });
 
         return Ok(new { Success = true });
+    }
+
+    // ===== EXPORT ENDPOINTS =====
+
+    [HttpGet("clinics/{clinicId:guid}/export")]
+    [Authorize(Policy = "CanManagePayments")]
+    public async Task<ActionResult> ExportPayments(
+        Guid clinicId,
+        [FromQuery] string format = "excel",
+        [FromQuery] DateTime? startDate = null,
+        [FromQuery] DateTime? endDate = null,
+        [FromQuery] Guid? patientId = null)
+    {
+        var userClinicId = GetCurrentUserClinicId();
+        if (userClinicId.HasValue && clinicId != userClinicId.Value)
+            return Forbid();
+
+        try
+        {
+            byte[] fileBytes;
+            string contentType;
+            string fileName;
+
+            switch (format.ToLower())
+            {
+                case "csv":
+                    fileBytes = await _exportService.ExportPaymentsCsvAsync(clinicId, startDate, endDate, patientId);
+                    contentType = "text/csv";
+                    fileName = $"pagos_{clinicId}_{DateTime.Now:yyyyMMdd}.csv";
+                    break;
+                case "pdf":
+                    fileBytes = await _exportService.ExportPaymentsPdfAsync(clinicId, startDate, endDate, patientId);
+                    contentType = "application/pdf";
+                    fileName = $"pagos_{clinicId}_{DateTime.Now:yyyyMMdd}.pdf";
+                    break;
+                case "excel":
+                case "xlsx":
+                default:
+                    fileBytes = await _exportService.ExportPaymentsExcelAsync(clinicId, startDate, endDate, patientId);
+                    contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+                    fileName = $"pagos_{clinicId}_{DateTime.Now:yyyyMMdd}.xlsx";
+                    break;
+            }
+
+            return File(fileBytes, contentType, fileName);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { Error = $"Error generando reporte: {ex.Message}" });
+        }
+    }
+
+    [HttpGet("clinics/{clinicId:guid}/balance/export")]
+    [Authorize(Policy = "CanManagePayments")]
+    public async Task<ActionResult> ExportPatientBalances(
+        Guid clinicId,
+        [FromQuery] string format = "excel")
+    {
+        var userClinicId = GetCurrentUserClinicId();
+        if (userClinicId.HasValue && clinicId != userClinicId.Value)
+            return Forbid();
+
+        try
+        {
+            byte[] fileBytes;
+            string contentType;
+            string fileName;
+
+            switch (format.ToLower())
+            {
+                case "csv":
+                    fileBytes = await _exportService.ExportPatientBalanceCsvAsync(clinicId);
+                    contentType = "text/csv";
+                    fileName = $"saldos_pacientes_{clinicId}_{DateTime.Now:yyyyMMdd}.csv";
+                    break;
+                case "pdf":
+                    fileBytes = await _exportService.ExportPatientBalancePdfAsync(clinicId);
+                    contentType = "application/pdf";
+                    fileName = $"saldos_pacientes_{clinicId}_{DateTime.Now:yyyyMMdd}.pdf";
+                    break;
+                case "excel":
+                case "xlsx":
+                default:
+                    fileBytes = await _exportService.ExportPatientBalanceExcelAsync(clinicId);
+                    contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+                    fileName = $"saldos_pacientes_{clinicId}_{DateTime.Now:yyyyMMdd}.xlsx";
+                    break;
+            }
+
+            return File(fileBytes, contentType, fileName);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { Error = $"Error generando reporte de saldos: {ex.Message}" });
+        }
     }
 
     private Guid GetCurrentUserId()

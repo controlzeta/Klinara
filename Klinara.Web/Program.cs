@@ -87,6 +87,7 @@ builder.Services.AddScoped<IClinicService, ClinicService>();
 builder.Services.AddScoped<IPatientTokenService, PatientTokenService>();
 builder.Services.AddScoped<IPatientPortalService, PatientPortalService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
+builder.Services.AddScoped<IAdminExportService, AdminExportService>();
 builder.Services.AddScoped<PatientPortalSessionState>();
 builder.Services.AddScoped<IUserAdministrationService, UserAdministrationService>();
 

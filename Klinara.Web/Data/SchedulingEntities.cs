@@ -359,3 +359,22 @@ public class PatientToken
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
+
+public class OtpResendLog
+{
+    [Key]
+    public Guid Id { get; set; } = Guid.NewGuid();
+
+    [Required]
+    [MaxLength(200)]
+    public string Email { get; set; } = string.Empty;
+
+    [Required]
+    public Guid ClinicId { get; set; }
+
+    [ForeignKey(nameof(ClinicId))]
+    public virtual Clinic Clinic { get; set; } = null!;
+
+    [Required]
+    public DateTime RequestedAt { get; set; } = DateTime.UtcNow;
+}

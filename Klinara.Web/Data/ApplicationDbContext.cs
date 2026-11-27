@@ -15,7 +15,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<DoctorVacation> DoctorVacations => Set<DoctorVacation>();
     public DbSet<Patient> Patients => Set<Patient>();
     public DbSet<PatientToken> PatientTokens => Set<PatientToken>();
-    public DbSet<Payment> Payments => Set<Payment>();
+        public DbSet<Payment> Payments => Set<Payment>();
+        public DbSet<OtpResendLog> OtpResendLogs => Set<OtpResendLog>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -166,29 +167,35 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                         });
 
         // Payment
-        builder.Entity<Payment>(entity =>
-        {
-            entity.HasIndex(e => e.ClinicId);
-            entity.HasIndex(e => e.PatientId);
-            entity.HasIndex(e => e.AppointmentId);
-            entity.HasIndex(e => e.PaidAt);
-            entity.HasIndex(e => new { e.ClinicId, e.PaidAt });
-            entity.HasOne(e => e.Clinic)
-                .WithMany()
-                .HasForeignKey(e => e.ClinicId)
-                .OnDelete(DeleteBehavior.NoAction);
-            entity.HasOne(e => e.Patient)
-                .WithMany(p => p.Payments)
-                .HasForeignKey(e => e.PatientId)
-                .OnDelete(DeleteBehavior.Restrict);
-            entity.HasOne(e => e.Appointment)
-                .WithMany()
-                .HasForeignKey(e => e.AppointmentId)
-                .OnDelete(DeleteBehavior.SetNull);
-            entity.HasOne(e => e.CreatedByUser)
-                .WithMany()
-                .HasForeignKey(e => e.CreatedByUserId)
-                .OnDelete(DeleteBehavior.Restrict);
-        });
-    }
-}
+                builder.Entity<Payment>(entity =>
+                {
+                    entity.HasIndex(e => e.ClinicId);
+                    entity.HasIndex(e => e.PatientId);
+                    entity.HasIndex(e => e.AppointmentId);
+                    entity.HasIndex(e => e.PaidAt);
+                    entity.HasIndex(e => new { e.ClinicId, e.PaidAt });
+                    entity.HasOne(e => e.Clinic)
+                        .WithMany()
+                        .HasForeignKey(e => e.ClinicId)
+                        .OnDelete(DeleteBehavior.NoAction);
+                    entity.HasOne(e => e.Patient)
+                        .WithMany(p => p.Payments)
+                        .HasForeignKey(e => e.PatientId)
+                        .OnDelete(DeleteBehavior.Restrict);
+                    entity.HasOne(e => e.Appointment)
+                        .WithMany()
+                        .HasForeignKey(e => e.AppointmentId)
+                        .OnDelete(DeleteBehavior.SetNull);
+                    entity.HasOne(e => e.CreatedByUser)
+                        .WithMany()
+                        .HasForeignKey(e => e.CreatedByUserId)
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
+                // OtpResendLog
+                builder.Entity<OtpResendLog>(entity =>
+                {
+                    entity.HasIndex(e => new { e.ClinicId, e.Email, e.RequestedAt });
+                });
+            }
+        }

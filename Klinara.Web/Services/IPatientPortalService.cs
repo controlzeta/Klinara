@@ -8,6 +8,7 @@ namespace Klinara.Web.Services;
 public interface IPatientPortalService
 {
     Task<PortalVerificationResult> SendVerificationEmailAsync(string email, string clinicSubdomain);
+    Task<PortalVerificationResult> ResendVerificationEmailAsync(string email, string clinicSubdomain);
     Task<PortalTokenResult> ValidateOtpAndCreatePortalTokenAsync(string email, string code, string clinicSubdomain);
     Task<PortalBookingResult> BookAppointmentAsync(string portalToken, BookAppointmentDto dto);
     Task<PortalConfirmationResult> ConfirmAppointmentAsync(string confirmationToken);
