@@ -436,6 +436,30 @@ namespace Klinara.Web.Migrations
                     b.ToTable("DoctorVacations");
                 });
 
+            modelBuilder.Entity("Klinara.Web.Data.OtpResendLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ClinicId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime>("RequestedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClinicId", "Email", "RequestedAt");
+
+                    b.ToTable("OtpResendLogs");
+                });
+
             modelBuilder.Entity("Klinara.Web.Data.Patient", b =>
                 {
                     b.Property<Guid>("Id")
@@ -934,6 +958,17 @@ namespace Klinara.Web.Migrations
                     b.Navigation("Clinic");
 
                     b.Navigation("Doctor");
+                });
+
+            modelBuilder.Entity("Klinara.Web.Data.OtpResendLog", b =>
+                {
+                    b.HasOne("Klinara.Web.Data.Clinic", "Clinic")
+                        .WithMany()
+                        .HasForeignKey("ClinicId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Clinic");
                 });
 
             modelBuilder.Entity("Klinara.Web.Data.Patient", b =>
