@@ -24,7 +24,7 @@
                     <td>
                         @if (showRemoveButton)
                         {
-                            <form @formname="@($"remove-login-{login.LoginProvider}")" @onsubmit="OnSubmitAsync" method="post">
+                            <form @formname="@($"remove-login-{login.LoginProvider}")" @onsubmit="">
                                 <AntiforgeryToken />
                                 <div>
                                     <input type="hidden" name="@nameof(LoginProvider)" value="@login.LoginProvider" />

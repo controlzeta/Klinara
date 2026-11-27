@@ -12,17 +12,17 @@
 @inject NavigationManager NavigationManager
 @inject IdentityRedirectManager RedirectManager
 
-<PageTitle>Manage email</PageTitle>
+<PageTitle>Administrar correo</PageTitle>
 
-<h3>Manage email</h3>
+<h3>Administrar correo</h3>
 
 <StatusMessage Message="@message"/>
 <div class="row">
     <div class="col-xl-6">
-        <form @onsubmit="OnSendEmailVerificationAsync" @formname="send-verification" id="send-verification-form" method="post">
+        <form @onsubmit="OnSendEmailVerificationAsync" @formname="send-verification" id="send-verification-form">
             <AntiforgeryToken />
         </form>
-        <EditForm Model="Input" FormName="change-email" OnValidSubmit="OnValidSubmitAsync" method="post">
+        <EditForm Model="Input" FormName="change-email" OnValidSubmit="OnValidSubmitAsync">
             <DataAnnotationsValidator />
             <ValidationSummary class="text-danger" role="alert" />
             @if (isEmailConfirmed)
